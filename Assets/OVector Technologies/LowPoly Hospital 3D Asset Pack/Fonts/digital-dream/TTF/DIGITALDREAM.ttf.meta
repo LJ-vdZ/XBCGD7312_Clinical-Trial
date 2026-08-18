@@ -1,0 +1,28 @@
+fileFormatVersion: 2
+guid: 9a91c9bc290b48d49b0538c52e4efee4
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Digital dream
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 287356
+  packageName: Hospital Interior - Low-Poly 3D Environment Assets
+  packageVersion: 1.0
+  assetPath: Assets/OVector Technologies/LowPoly Hospital 3D Asset Pack/Fonts/digital-dream/TTF/DIGITALDREAM.ttf
+  uploadId: 676642

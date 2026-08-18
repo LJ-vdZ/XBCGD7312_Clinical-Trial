@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f5870b54494a174ea7cb98ed6385c31, type: 3}
+  m_Name: MaleDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - character:
+      characterName: Frank
+      portrait: {fileID: 21300000, guid: 2fd615b6c8de530498fd4ed4de2d999f, type: 3}
+    text: 'Hello sir, I just wanted to say that you are doing a good job restoring
+      this clinic. I lost a family member a while back because there wasn''t a place
+      to take them. This clinic didn''t even have electricity. Please accept this
+      donation.
+
+'
+  - character:
+      characterName: Lisa
+      portrait: {fileID: 21300000, guid: a88e7af7ad214a14cb8211031efbb636, type: 3}
+    text: 'I heard this place was under new management, and by the looks of it, I
+      think it''s in good hands. It''s not much, but please accept this donation.
+
+'

@@ -1,0 +1,28 @@
+fileFormatVersion: 2
+guid: 514d13ef790c72a44977c51376289c89
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Digital dream Fat Skew Narrow
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 287356
+  packageName: Hospital Interior - Low-Poly 3D Environment Assets
+  packageVersion: 1.0
+  assetPath: Assets/OVector Technologies/LowPoly Hospital 3D Asset Pack/Fonts/digital-dream/TTF/DIGITALDREAMFATSKEWNARROW.ttf
+  uploadId: 676642
