@@ -78,9 +78,9 @@ public class AudioManager : MonoBehaviour
 
         PrepareMedicineSwapPlayback();
 
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
 
-        SceneManager.sceneLoaded += OnSceneLoaded;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void Start()
@@ -95,7 +95,7 @@ public class AudioManager : MonoBehaviour
     {
         if (Instance == this) 
         {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
         }
             
     }

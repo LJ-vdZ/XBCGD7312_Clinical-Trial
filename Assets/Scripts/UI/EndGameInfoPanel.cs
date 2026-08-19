@@ -73,6 +73,6 @@ public class EndGameInfoPanel : MonoBehaviour
     {
         Time.timeScale = 1f;
         FeatureBootstrap.PrepareForSceneRestart();
-        SceneManager.LoadScene(MainMenuSceneName);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(MainMenuSceneName);
     }
 }

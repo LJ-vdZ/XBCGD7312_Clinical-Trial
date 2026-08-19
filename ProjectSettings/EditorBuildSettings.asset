@@ -11,13 +11,13 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/HospitalHubLevel.unity
     guid: 50df11877e35175468de2f49571b6032
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/JanitorScene.unity
     guid: 4415383a6693df44e9bc5d10c558b1d4
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/DrScene.unity
     guid: 732eaba7460d85e49bafe183f874b232
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/NurseScene.unity
     guid: 3b6e887b3b83c774ebe116f205f1066d
   - enabled: 1
