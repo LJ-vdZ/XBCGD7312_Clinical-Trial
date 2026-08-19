@@ -7,10 +7,12 @@ public class MainSceneUIManager : MonoBehaviour
 
     [Header("Job Panel")]
     public GameObject jobPanel;
+    public GameObject jobSelectionPanel;
     public Button nurseButton;
     public Button doctorButton;
     public Button janitorButton;
     public Button jobCloseButton;
+    public Button jobSelectionCloseButton;
 
     [Header("Info Panel")]
     public GameObject infoPanel;
@@ -34,6 +36,7 @@ public class MainSceneUIManager : MonoBehaviour
         if (doctorButton != null) doctorButton.onClick.AddListener(OnDoctorClicked);
         if (janitorButton != null) janitorButton.onClick.AddListener(OnJanitorClicked);
         if (jobCloseButton != null) jobCloseButton.onClick.AddListener(CloseAllUI);
+        if (jobSelectionCloseButton != null) jobSelectionCloseButton.onClick.AddListener(CloseAllUI);
         if (infoCloseButton != null) infoCloseButton.onClick.AddListener(CloseAllUI);
         if (infoManagerCloseButton != null) infoManagerCloseButton.onClick.AddListener(CloseAllUI);
         if (infoJanitorCloseButton != null) infoJanitorCloseButton.onClick.AddListener(CloseAllUI);
@@ -92,11 +95,7 @@ public class MainSceneUIManager : MonoBehaviour
         }
         Debug.Log("Added 1 minute to Janitor");
 
-        roleTimeManager.SetAllocation(
-            roleTimeManager.nurseMinutes,
-            roleTimeManager.doctorMinutes,
-            roleTimeManager.janitorMinutes + 1
-        );
+        roleTimeManager.SetAllocation(roleTimeManager.nurseMinutes,roleTimeManager.doctorMinutes,roleTimeManager.janitorMinutes + 1);
     }
 
     //ui controls
@@ -155,8 +154,8 @@ public class MainSceneUIManager : MonoBehaviour
         Debug.Log("Closing UI");
 
         if (jobPanel != null) jobPanel.SetActive(false);
+        if (jobSelectionPanel != null) jobSelectionPanel.SetActive(false);
         if (infoPanel != null) infoPanel.SetActive(false);
-
         if (infoManagerPanel != null) infoManagerPanel.SetActive(false);
         if (infoJanitorPanel != null) infoJanitorPanel.SetActive(false);
         if (infoNursePanel != null) infoNursePanel.SetActive(false);
@@ -167,8 +166,24 @@ public class MainSceneUIManager : MonoBehaviour
 
     void SetPlayerControl(bool enabled)
     {
-        if (playerMovement != null)
+        var active = CharacterSwitchManager.Instance != null
+            ? CharacterSwitchManager.Instance.ActiveCharacter
+            : null;
+
+        if (active != null && active.movement != null)
+            active.movement.SetControlsEnabled(enabled);
+        else if (playerMovement != null)
             playerMovement.SetControlsEnabled(enabled);
+        else
+        {
+            var move = FindFirstObjectByType<SimplePlayerMovement>();
+            if (move != null)
+                move.SetControlsEnabled(enabled);
+        }
+
+        var cam = FindFirstObjectByType<CameraFollow>();
+        if (cam != null)
+            cam.LockCursor(enabled);
     }
 
 
