@@ -8,7 +8,7 @@ public class GameManager : MonoBehaviour
     private PlayerRoleManager roleManager;
 
     [Header("Role Timer")]
-    public float roleTimeLimit = 300f; // 5 minutes
+    public float roleTimeLimit = 300f; //5 minutes
     private float currentRoleTime;
     public bool canPerformTasks = true;
 
@@ -29,10 +29,15 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null)
+        if (Instance == null) 
+        {
             Instance = this;
-        else
+        }
+        else 
+        {
             Destroy(gameObject);
+        }
+            
     }
 
     void Start()
@@ -42,6 +47,7 @@ public class GameManager : MonoBehaviour
         PlayerRoleManager.OnRoleChanged += HandleRoleChanged;
 
         ResetRoleTimer();
+
         ScheduleNextOutage();
     }
 
@@ -57,29 +63,34 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // Role timer system
+    //role timer system
 
     void HandleRoleTimer()
     {
-        if (!canPerformTasks) return;
+        if (!canPerformTasks)
+        {
+            return;
+        }
 
         currentRoleTime -= Time.deltaTime;
 
         if (currentRoleTime <= 0f)
         {
             currentRoleTime = 0f;
+
             canPerformTasks = false;
 
-            Debug.Log("Time's up! Go change roles.");
+            Debug.Log("Time zero. Change roles");
         }
     }
 
     public void ResetRoleTimer()
     {
         currentRoleTime = roleTimeLimit;
+
         canPerformTasks = true;
 
-        Debug.Log("Role timer reset!");
+        Debug.Log("Role timer reset");
     }
 
     public float GetRemainingRoleTime()
@@ -106,38 +117,52 @@ public class GameManager : MonoBehaviour
 
     void StartPowerOutage()
     {
-        if (isPowerOut) return;
+        if (isPowerOut)
+        {
+            return;
+        }
 
         isPowerOut = true;
+
         currentOutageTime = 0f;
+
         lastNotifiedSeconds = -1;
 
         foreach (var light in hospitalLights)
         {
-            if (light != null)
+            if (light != null) 
+            {
                 light.enabled = false;
+            }
         }
 
         int secs = Mathf.CeilToInt(outageMaxTime);
-        if (NotificationSidePanel.Instance != null)
-            NotificationSidePanel.Instance.ShowPowerOutage(secs);
 
-        Debug.Log("POWER OUTAGE STARTED!");
+        if (NotificationSidePanel.Instance != null) 
+        {
+            NotificationSidePanel.Instance.ShowPowerOutage(secs);
+        }
+            
+
+        Debug.Log("Power outage started");
     }
 
     void HandlePowerOutage()
     {
         if (!isPowerOut)
         {
-            if (outageTimerText != null)
+            if (outageTimerText != null) 
+            {
                 outageTimerText.gameObject.SetActive(false);
+            }
+                
 
             return;
         }
 
         currentOutageTime += Time.deltaTime;
 
-        // Same outage drain as before; stops when power returns.
+        //outage drain works same as when it was part of puzzle. returns to normal stat decrease when power returns.
         if (HospitalStatsManager.Instance != null)
         {
             HospitalStatsManager.Instance.ChangeSanitation(-1.0f * Time.deltaTime);
@@ -146,45 +171,67 @@ public class GameManager : MonoBehaviour
         }
 
         float timeLeft = Mathf.Max(0, outageMaxTime - currentOutageTime);
+
         int secsLeft = Mathf.CeilToInt(timeLeft);
 
         if (outageTimerText != null)
         {
-            outageTimerText.text = $"POWER OUTAGE\n{secsLeft}s";
+            outageTimerText.text = $"Power outage\n{secsLeft}s";
+
             outageTimerText.gameObject.SetActive(true);
         }
 
         if (secsLeft != lastNotifiedSeconds)
         {
             lastNotifiedSeconds = secsLeft;
-            if (NotificationSidePanel.Instance != null)
+
+            if (NotificationSidePanel.Instance != null) 
+            {
                 NotificationSidePanel.Instance.UpdatePowerOutageCountdown(secsLeft);
+            }
+                
         }
 
-        if (currentOutageTime >= outageMaxTime)
+        if (currentOutageTime >= outageMaxTime) 
+        {
             EndPowerOutage();
+        }
+            
     }
 
     public void EndPowerOutage()
     {
-        if (!isPowerOut) return;
+        if (!isPowerOut)
+        {
+            return;
+        }
 
         isPowerOut = false;
         lastNotifiedSeconds = -1;
 
         foreach (var light in hospitalLights)
         {
-            if (light != null)
+            if (light != null) 
+            {
                 light.enabled = true;
+            }
+                
         }
 
-        if (outageTimerText != null)
+        if (outageTimerText != null) 
+        {
             outageTimerText.gameObject.SetActive(false);
+        }
+            
 
-        if (NotificationSidePanel.Instance != null)
+        if (NotificationSidePanel.Instance != null) 
+        {
             NotificationSidePanel.Instance.ShowPowerRestored();
+        }
+            
 
-        Debug.Log("Power restored.");
+        Debug.Log("Power restored");
+
         ScheduleNextOutage();
     }
 }

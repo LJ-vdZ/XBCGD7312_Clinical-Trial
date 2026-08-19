@@ -4,17 +4,14 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Press P to open character select. Click a role body to transfer camera + controls.
-/// Configures Doctor/Nurse/Janitor/Manager scene objects as playable characters.
-/// </summary>
+
 public class CharacterSwitchManager : MonoBehaviour
 {
     public static CharacterSwitchManager Instance;
 
     public static Action<PlayableCharacter> OnCharacterChanged;
 
-    [Header("References")]
+    [Header("Character and Camera Reference")]
     public CameraFollow cameraFollow;
     public PlayableCharacter[] characters;
 
@@ -23,9 +20,11 @@ public class CharacterSwitchManager : MonoBehaviour
     public Transform buttonContainer;
 
     PlayableCharacter active;
+
     bool panelOpen;
 
     public PlayableCharacter ActiveCharacter => active;
+
     public RoleType ActiveRole => active != null ? active.role : RoleType.Manager;
 
     void Awake()
@@ -36,113 +35,189 @@ public class CharacterSwitchManager : MonoBehaviour
     void Start()
     {
         EnsureCharactersConfigured();
+
         BuildSelectionUIIfNeeded();
 
-        // Start controlling Manager / Player
+        //start as Manager, called player in scene. Controls go here first
         PlayableCharacter manager = FindByRole(RoleType.Manager);
-        if (manager == null && characters != null && characters.Length > 0)
-            manager = characters[0];
 
-        if (manager != null)
+        if (manager == null && characters != null && characters.Length > 0) 
+        {
+            manager = characters[0];
+        }
+
+        if (manager != null) 
+        {
             SwitchTo(manager, playSound: false);
-        else
-            Debug.LogWarning("CharacterSwitchManager: no Manager character found.");
+        }
+        else 
+        {
+            Debug.LogWarning("No Manager character found.");
+        }
+            
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.P))
+        //if player presses P, open character select. 
+        if (Input.GetKeyDown(KeyCode.P)) 
+        {
             TogglePanel();
+        }
+            
 
-        if (panelOpen && Input.GetKeyDown(KeyCode.Escape))
+        if (panelOpen && Input.GetKeyDown(KeyCode.Escape)) 
+        {
             ClosePanel();
+        }
+            
     }
 
     public void TogglePanel()
     {
-        if (panelOpen) ClosePanel();
-        else OpenPanel();
+        if (panelOpen)
+        {
+            ClosePanel();
+        }
+        else
+        {
+            OpenPanel();
+        }
     }
 
     public void ClosePanel()
     {
-        if (selectionPanel == null) return;
+        if (selectionPanel == null)
+        {
+            return;
+        }
+        
         panelOpen = false;
+        
         selectionPanel.SetActive(false);
 
         if (active != null && active.movement != null)
+        {
             active.movement.SetControlsEnabled(true);
+        }
 
         if (cameraFollow != null)
+        {
             cameraFollow.LockCursor(true);
+        }
 
         if (AudioManager.Instance != null)
+        {
             AudioManager.Instance.Play("close");
+        }
     }
 
     public void SwitchTo(PlayableCharacter next, bool playSound = true)
     {
-        if (next == null) return;
-
-        foreach (var c in characters)
+        if (next == null)
         {
-            if (c == null) continue;
-            c.SetControlled(false);
+            return;
+        }
+
+        foreach (var character in characters)
+        {
+            if (character == null)
+            {
+                continue;
+            }
+
+            character.SetControlled(false);
         }
 
         active = next;
+
         active.SetControlled(true);
 
-        if (active.roleManager != null)
-            active.roleManager.ApplyRoleWithoutTimerReset(active.role);
-        else if (PlayerRoleManager.ActiveInstance != null)
-            PlayerRoleManager.ActiveInstance.ApplyRoleWithoutTimerReset(active.role);
-
+        if (active.roleManager != null) 
+        { 
+            active.roleManager.ApplyRoleWithoutTimerReset(active.role); 
+        }
+            
+        else if (PlayerRoleManager.ActiveInstance != null) 
+        {
+            PlayerRoleManager.ActiveInstance.ApplyRoleWithoutTimerReset(active.role); 
+        }
+            
+        //check if camera is in scene and if already attach to character or not
         if (cameraFollow != null)
         {
             cameraFollow.SetTarget(active.transform);
-            if (active.movement != null)
+
+            if (active.movement != null) 
+            {
                 active.movement.SetCamera(cameraFollow.GetComponent<Camera>());
+            }
+                
         }
 
-        // Snap mini-map camera X/Z to the newly active body.
+        //snap mini-map camera x and z to new active character
         var miniMap = FindFirstObjectByType<MiniMapCameraFollower>();
+
         if (miniMap == null)
         {
-            var miniCamGo = GameObject.Find("Mini-Map Camera");
-            if (miniCamGo != null)
-                miniMap = miniCamGo.GetComponent<MiniMapCameraFollower>()
-                          ?? miniCamGo.AddComponent<MiniMapCameraFollower>();
+            var miniCamGameObj = GameObject.Find("Mini-Map Camera");
+
+            if (miniCamGameObj != null) 
+            {
+                miniMap = miniCamGameObj.GetComponent<MiniMapCameraFollower>() ?? miniCamGameObj.AddComponent<MiniMapCameraFollower>();
+            }
+                
         }
-        if (miniMap != null)
-            miniMap.SetPlayer(active.transform);
+        if (miniMap != null) 
+        { 
+            miniMap.SetPlayer(active.transform); 
+        }
+            
 
         ClosePanel();
+
         OnCharacterChanged?.Invoke(active);
 
-        if (playSound && AudioManager.Instance != null)
-            AudioManager.Instance.Play("success");
+        if (playSound && AudioManager.Instance != null) 
+        { 
+            AudioManager.Instance.Play("success"); 
+        }
+            
 
         Debug.Log("Now controlling: " + active.DisplayName);
     }
 
     public void SwitchToRole(RoleType role)
     {
-        var c = FindByRole(role);
-        if (c != null) SwitchTo(c);
+        var character = FindByRole(role);
+
+        if (character != null)
+        {
+            SwitchTo(character);
+        }
     }
 
     PlayableCharacter FindByRole(RoleType role)
     {
-        if (characters == null) return null;
-        foreach (var c in characters)
-            if (c != null && c.role == role)
-                return c;
+        if (characters == null)
+        {
+            return null;
+        }
+
+        foreach (var character in characters)
+        {
+            if (character != null && character.role == role)
+            {
+                return character;
+            }
+        }
+            
         return null;
     }
 
     void EnsureCharactersConfigured()
     {
+        //check characters in list and their tags
         var list = new List<PlayableCharacter>();
 
         TryConfigure("Player", RoleType.Manager, "Manager", list);
@@ -151,62 +226,95 @@ public class CharacterSwitchManager : MonoBehaviour
         TryConfigure("Nurse", RoleType.Nurse, "Nurse", list);
         TryConfigure("Janitor", RoleType.Janitor, "Janitor", list);
 
-        // Prefer Manager-named over duplicate Player if both exist with same role
+        //since current setup Manager has player tag, safety for if character has Manager take, prioritose manager 
         var unique = new List<PlayableCharacter>();
         var seen = new HashSet<RoleType>();
-        // Prefer Manager name for Manager role
-        foreach (var c in list)
+
+        foreach (var charcter in list)
         {
-            if (c.role == RoleType.Manager && c.gameObject.name == "Manager")
+            if (charcter.role == RoleType.Manager && charcter.gameObject.name == "Manager")
             {
-                unique.Add(c);
+                unique.Add(charcter);
+
                 seen.Add(RoleType.Manager);
             }
         }
-        foreach (var c in list)
+
+        foreach (var charcter in list)
         {
-            if (seen.Contains(c.role)) continue;
-            unique.Add(c);
-            seen.Add(c.role);
+            if (seen.Contains(charcter.role))
+            {
+                continue;
+            }
+
+            unique.Add(charcter);
+            seen.Add(charcter.role);
         }
 
         characters = unique.ToArray();
 
-        // Rename Player -> Manager for clarity
-        foreach (var c in characters)
+        //rename tag Player to Manager for clarity if character was set to tag Player
+        foreach (var charcter in characters)
         {
-            if (c != null && c.role == RoleType.Manager && c.gameObject.name == "Player")
-                c.gameObject.name = "Manager";
+            if (charcter != null && charcter.role == RoleType.Manager && charcter.gameObject.name == "Player") 
+            {
+                charcter.gameObject.name = "Manager";
+            }
+                
         }
 
-        if (cameraFollow == null)
+        if (cameraFollow == null) 
+        {
             cameraFollow = FindFirstObjectByType<CameraFollow>();
+        }
+            
     }
 
     void TryConfigure(string objectName, RoleType role, string display, List<PlayableCharacter> into)
     {
-        GameObject go = FindWorldCharacter(objectName, role);
-        if (go == null) return;
+        GameObject gameObject = FindWorldCharacter(objectName, role);
 
-        var pc = go.GetComponent<PlayableCharacter>();
-        if (pc == null) pc = go.AddComponent<PlayableCharacter>();
-        pc.role = role;
-        pc.displayName = display;
+        if (gameObject == null)
+        {
+            return;
+        }
 
-        // Disable old station behaviour — switching is via P panel now
-        var station = go.GetComponent<RoleSwitchStation>();
-        if (station != null) station.enabled = false;
-        var trigger = go.GetComponent<InteractableTrigger>();
-        if (trigger != null) trigger.enabled = false;
+        var playableCharacter = gameObject.GetComponent<PlayableCharacter>();
 
-        EnsureControlComponents(go, role);
-        pc.CacheComponents();
-        into.Add(pc);
+        if (playableCharacter == null)
+        {
+            playableCharacter = gameObject.AddComponent<PlayableCharacter>();
+        }
+
+        playableCharacter.role = role;
+
+        playableCharacter.displayName = display;
+
+        //disable old way of switching (interacting with other role to switch to) and use new switcing throuhg P panel
+        var station = gameObject.GetComponent<RoleSwitchStation>();
+
+        if (station != null)
+        {
+            station.enabled = false;
+        }
+
+        var trigger = gameObject.GetComponent<InteractableTrigger>();
+
+        if (trigger != null)
+        {
+            trigger.enabled = false;
+        }
+
+        EnsureControlComponents(gameObject, role);
+
+        playableCharacter.CacheComponents();
+
+        into.Add(playableCharacter);
     }
 
     GameObject FindWorldCharacter(string objectName, RoleType role)
     {
-        // Prefer tagged world avatars
+        //expected tags on world avatars
         string tag = role switch
         {
             RoleType.Manager => "Player",
@@ -221,56 +329,90 @@ public class CharacterSwitchManager : MonoBehaviour
             try
             {
                 var tagged = GameObject.FindGameObjectsWithTag(tag);
+
                 foreach (var t in tagged)
                 {
-                    if (t.GetComponent<RectTransform>() != null) continue;
-                    if (t.name == objectName || role == RoleType.Manager)
-                        return t;
+                    if (t.GetComponent<RectTransform>() != null)
+                    {
+                        continue;
+                    }
+
+                    if (t.name == objectName || role == RoleType.Manager) 
+                    { 
+                        return t; 
+                    }
+                        
                 }
                 // any tagged non-UI
                 foreach (var t in tagged)
                 {
-                    if (t.GetComponent<RectTransform>() == null)
+                    if (t.GetComponent<RectTransform>() == null) 
+                    {
                         return t;
+                    }
+                        
                 }
             }
             catch (UnityException)
             {
-                // Tag may not exist in tag manager
+                Debug.Log("Tag not in tag list");
             }
         }
 
-        // Fallback: all transforms named correctly that are NOT under a Canvas
+        //incase, check all transforms named correctly that arent under Canvas
         var all = FindObjectsByType<Transform>(FindObjectsSortMode.None);
+
         foreach (var t in all)
         {
-            if (t.name != objectName) continue;
-            if (t.GetComponent<RectTransform>() != null) continue;
-            if (t.GetComponentInParent<Canvas>() != null) continue;
+            if (t.name != objectName)
+            {
+                continue;
+            }
+
+            if (t.GetComponent<RectTransform>() != null)
+            {
+                continue;
+            }
+
+            if (t.GetComponentInParent<Canvas>() != null)
+            {
+                continue;
+            }
+
             return t.gameObject;
         }
 
         return null;
     }
 
-    void EnsureControlComponents(GameObject go, RoleType role)
+    void EnsureControlComponents(GameObject gameObject, RoleType role)
     {
-        var cc = go.GetComponent<CharacterController>();
-        if (cc == null)
+        var characterController = gameObject.GetComponent<CharacterController>();
+
+        if (characterController == null)
         {
-            cc = go.AddComponent<CharacterController>();
-            cc.height = 2f;
-            cc.radius = 0.4f;
-            cc.center = new Vector3(0f, 1f, 0f);
+            characterController = gameObject.AddComponent<CharacterController>();
+
+            characterController.height = 2f;
+
+            characterController.radius = 0.4f;
+
+            characterController.center = new Vector3(0f, 1f, 0f);
         }
 
-        if (go.GetComponent<SimplePlayerMovement>() == null)
-            go.AddComponent<SimplePlayerMovement>();
+        if (gameObject.GetComponent<SimplePlayerMovement>() == null) 
+        {
+            gameObject.AddComponent<SimplePlayerMovement>(); 
+        }
+            
 
-        if (go.GetComponent<PlayerInteractionHandler>() == null)
-            go.AddComponent<PlayerInteractionHandler>();
+        if (gameObject.GetComponent<PlayerInteractionHandler>() == null) 
+        {
+            gameObject.AddComponent<PlayerInteractionHandler>(); 
+        }
+            
 
-        // Keep role tags consistent so trigger volumes can detect any playable body.
+        //keep role tags so trigger volumes can detect playable character object
         try
         {
             string tag = role switch
@@ -281,83 +423,136 @@ public class CharacterSwitchManager : MonoBehaviour
                 RoleType.Janitor => "Janitor",
                 _ => "Player"
             };
-            if (!string.IsNullOrEmpty(tag) && !go.CompareTag(tag))
-                go.tag = tag;
+
+            if (!string.IsNullOrEmpty(tag) && !gameObject.CompareTag(tag)) 
+            {
+                gameObject.tag = tag;
+            }
+              
         }
         catch (UnityException)
         {
-            // Tag may not exist in TagManager yet.
+            Debug.Log("Tag no in tag list");
         }
 
-        var prm = go.GetComponent<PlayerRoleManager>();
-        if (prm == null) prm = go.AddComponent<PlayerRoleManager>();
-        prm.SetFixedRole(role);
+        var playerRoleManager = gameObject.GetComponent<PlayerRoleManager>();
 
-        if (go.GetComponent<FootstepAudio>() == null)
-            go.AddComponent<FootstepAudio>();
+        if (playerRoleManager == null)
+            playerRoleManager = gameObject.AddComponent<PlayerRoleManager>();
 
-        if (role == RoleType.Janitor && go.GetComponent<JanitorAbilities>() == null)
-            go.AddComponent<JanitorAbilities>();
+        if (playerRoleManager != null)
+            playerRoleManager.SetFixedRole(role);
+        
+
+        if (gameObject.GetComponent<FootstepAudio>() == null) 
+        {
+            gameObject.AddComponent<FootstepAudio>();
+        }
+
+
+        if (role == RoleType.Janitor && gameObject.GetComponent<JanitorAbilities>() == null) 
+        {
+            gameObject.AddComponent<JanitorAbilities>();
+        }
+            
     }
 
     void BuildSelectionUIIfNeeded()
     {
-        if (selectionPanel != null) return;
+        if (selectionPanel != null)
+        {
+            return;
+        }
 
         selectionPanel = ClinicalUIFactory.FindByName("CharacterSelectPanel");
+
         if (selectionPanel == null)
         {
-            Debug.LogError("CharacterSwitchManager: missing scene object 'CharacterSelectPanel'.");
+            Debug.LogError("CharacterSwitchManager missing object CharacterSelectPanel.");
+
             return;
         }
 
         selectionPanel.SetActive(false);
 
         var buttonsT = ClinicalUIFactory.FindChild(selectionPanel.transform, "Buttons");
-        if (buttonsT != null)
-            buttonContainer = buttonsT;
 
+        if (buttonsT != null) 
+        {
+            buttonContainer = buttonsT;
+        }
+            
+
+        //click role button to give control to other plyer character and snap camera there.
         BindRoleButton("ManagerButton", RoleType.Manager);
         BindRoleButton("DoctorButton", RoleType.Doctor);
         BindRoleButton("NurseButton", RoleType.Nurse);
         BindRoleButton("JanitorButton", RoleType.Janitor);
+
+        //close panel button
         ClinicalUIFactory.BindButton(selectionPanel.transform, "CloseButton", ClosePanel);
     }
 
     void BindRoleButton(string buttonName, RoleType role)
     {
         var root = buttonContainer != null ? buttonContainer : selectionPanel.transform;
+
         ClinicalUIFactory.BindButton(root, buttonName, () =>
         {
             var character = FindByRole(role);
-            if (character != null)
+
+            if (character != null) 
+            {
                 SwitchTo(character);
+            }
+                
         });
     }
 
     public void OpenPanel()
     {
-        if (selectionPanel == null)
+        if (selectionPanel == null) 
+        {
             BuildSelectionUIIfNeeded();
-        if (selectionPanel == null) return;
+        }
 
-        if (NewUIRoot.Canvas != null && !NewUIRoot.Canvas.gameObject.activeSelf)
+        if (selectionPanel == null)
+        {
+            return;
+        }
+
+        if (NewUIRoot.Canvas != null && !NewUIRoot.Canvas.gameObject.activeSelf) 
+        {
             NewUIRoot.Canvas.gameObject.SetActive(true);
+        }
+            
 
         panelOpen = true;
+
         selectionPanel.SetActive(true);
+
         selectionPanel.transform.SetAsLastSibling();
 
-        if (active != null && active.movement != null)
+        if (active != null && active.movement != null) 
+        {
             active.movement.SetControlsEnabled(false);
+        }
+            
 
-        if (cameraFollow != null)
+        if (cameraFollow != null) 
+        {
             cameraFollow.LockCursor(false);
+        }
+            
 
         Cursor.lockState = CursorLockMode.None;
+
         Cursor.visible = true;
 
-        if (AudioManager.Instance != null)
+        if (AudioManager.Instance != null) 
+        {
             AudioManager.Instance.Play("open");
+        }
+            
     }
 }

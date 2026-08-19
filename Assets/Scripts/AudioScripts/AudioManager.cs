@@ -3,10 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-/// <summary>
-/// Central audio hub. Background music is unchanged.
-/// SFX are the seven mapped clips under Assets/Audio, looked up by SoundId / alias hashmap.
-/// </summary>
+//used hashmap approach
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance;
@@ -40,7 +37,7 @@ public class AudioManager : MonoBehaviour
     public AudioClip walkingClip;
     public AudioClip MedicineBox;
 
-
+    //change pitch and speed of walking audio. walking sfx was too slow for character speed
     [Range(0.5f, 2f)] public float walkingPitch = 1.2f;
     [Range(1f, 8f)] public float medicineSwapVolume = 5f;
 
@@ -51,7 +48,9 @@ public class AudioManager : MonoBehaviour
     AudioSource cartLoopSource;
     AudioSource buttonSource;
     AudioSource swapSource;
+
     float buttonStartTime;
+
     AudioClip amplifiedSwapClip;
 
     void Awake()
@@ -68,26 +67,37 @@ public class AudioManager : MonoBehaviour
         }
 
         EnsureLoopSources();
+
         LoadClipsFromAudioFolder();
+
         BuildSoundMap();
+
         BuildAliases();
+
         PrepareButtonClickPlayback();
+
         PrepareMedicineSwapPlayback();
 
         SceneManager.sceneLoaded -= OnSceneLoaded;
+
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void Start()
     {
         PlayMusic(backgroundMusic);
+
         HookAllButtons();
     }
 
+    //if already exists, descroy onlod
     void OnDestroy()
     {
-        if (Instance == this)
+        if (Instance == this) 
+        {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+            
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -101,46 +111,88 @@ public class AudioManager : MonoBehaviour
         cartLoopSource = CreateLoopSource("CartLoop");
         buttonSource = CreateOneShotSource("ButtonClickSource");
         swapSource = CreateOneShotSource("MedicineSwapSource");
+
         swapSource.volume = 1f;
     }
 
     AudioSource CreateOneShotSource(string sourceName)
     {
         var src = CreateLoopSource(sourceName);
+
         src.loop = false;
         src.playOnAwake = false;
         src.spatialBlend = 0f;
         src.priority = 0;
+
         return src;
     }
 
     AudioSource CreateLoopSource(string sourceName)
     {
         var child = transform.Find(sourceName);
+
         AudioSource src = child != null ? child.GetComponent<AudioSource>() : null;
+
         if (src == null)
         {
+
             var go = new GameObject(sourceName);
+
             go.transform.SetParent(transform, false);
+
             src = go.AddComponent<AudioSource>();
         }
 
         src.playOnAwake = false;
+
         src.loop = true;
+
         src.spatialBlend = 0f;
+
         return src;
     }
 
     void LoadClipsFromAudioFolder()
     {
-        if (buttonClickSFX == null) buttonClickSFX = LoadAudio("ButtonClick");
-        if (endScreenAppearsClip == null) endScreenAppearsClip = LoadAudio("EndScreenAppears");
-        if (janitorCartClip == null) janitorCartClip = LoadAudio("JanitorCartMoving");
-        if (medicineSelectClip == null) medicineSelectClip = LoadAudio("Medicine Select");
-        if (medicineSwapClip == null) medicineSwapClip = LoadAudio("Medicine Swap");
-        if (popUpNotificationClip == null) popUpNotificationClip = LoadAudio("PopUpNotification");
-        if (walkingClip == null) walkingClip = LoadAudio("Walking");
-        if (MedicineBox == null) MedicineBox = LoadAudio("CardboardBox");
+        if (buttonClickSFX == null)
+        {
+            buttonClickSFX = LoadAudio("ButtonClick");
+        }
+
+        if (endScreenAppearsClip == null)
+        {
+            endScreenAppearsClip = LoadAudio("EndScreenAppears");
+        }
+
+        if (janitorCartClip == null)
+        {
+            janitorCartClip = LoadAudio("JanitorCartMoving");
+        }
+
+        if (medicineSelectClip == null) 
+        {
+            medicineSelectClip = LoadAudio("Medicine Select");
+        }
+
+        if (medicineSwapClip == null)
+        {
+            medicineSwapClip = LoadAudio("Medicine Swap");
+        }
+
+        if (popUpNotificationClip == null)
+        {
+            popUpNotificationClip = LoadAudio("PopUpNotification");
+        }
+
+        if (walkingClip == null)
+        {
+            walkingClip = LoadAudio("Walking");
+        }
+
+        if (MedicineBox == null)
+        {
+            MedicineBox = LoadAudio("CardboardBox");
+        }
     }
 
     static AudioClip LoadAudio(string fileNameWithoutExtension)
@@ -164,40 +216,61 @@ public class AudioManager : MonoBehaviour
     void BuildSoundMap()
     {
         soundMap.Clear();
+
         Assign(SoundId.ButtonClick, buttonClickSFX);
+
         Assign(SoundId.EndScreenAppears, endScreenAppearsClip);
+
         Assign(SoundId.JanitorCart, janitorCartClip);
+
         Assign(SoundId.MedicineSelect, medicineSelectClip);
+
         Assign(SoundId.MedicineSwap, medicineSwapClip);
+
         Assign(SoundId.PopUpNotification, popUpNotificationClip);
+
         Assign(SoundId.Walking, walkingClip);
+
         Assign(SoundId.CardboardBox, MedicineBox);
     }
 
     void Assign(SoundId id, AudioClip clip)
     {
-        if (clip != null)
+        if (clip != null) 
+        {
             soundMap[id] = clip;
+        }
+            
     }
 
     void BuildAliases()
     {
         aliasMap.Clear();
+
         MapAlias(SoundId.ButtonClick, "button click", "buttonclick", "button", "click");
+
         MapAlias(SoundId.EndScreenAppears, "end screen appears", "endscreenappears", "endscreen");
+
         MapAlias(SoundId.JanitorCart, "janitorcart", "janitor cart", "janitorcartmoving");
+
         MapAlias(SoundId.MedicineSelect, "medicine select", "medicineselect");
+
         MapAlias(SoundId.MedicineSwap, "medicine swap", "medicineswap");
-        MapAlias(SoundId.PopUpNotification,
-            "popupnontification", "popupnotification", "pop up notification", "notification");
+
+        MapAlias(SoundId.PopUpNotification, "popupnontification", "popupnotification", "pop up notification", "notification");
+        
         MapAlias(SoundId.Walking, "walking", "walk", "footstep");
+        
         MapAlias(SoundId.CardboardBox, "cardboardbox", "cardboard box", "medicinebox", "medicine box");
     }
 
     void MapAlias(SoundId id, params string[] keys)
     {
-        foreach (var key in keys)
+        foreach (var key in keys) 
+        {
             aliasMap[NormalizeKey(key)] = id;
+        }
+            
     }
 
     static string NormalizeKey(string key)
@@ -207,53 +280,86 @@ public class AudioManager : MonoBehaviour
 
     public void PlayMusic(AudioClip clip)
     {
-        if (clip == null || musicSource == null) return;
+        if (clip == null || musicSource == null)
+        {
+            return;
+        }
+
         musicSource.clip = clip;
+
         musicSource.loop = true;
+
         musicSource.Play();
     }
 
     public void PlaySFX(AudioClip clip, float volumeScale = 1f)
     {
-        if (clip == null || sfxSource == null) return;
+        if (clip == null || sfxSource == null)
+        {
+            return;
+        }
+
         sfxSource.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
     }
 
     public void PlayButtonClick()
     {
         AudioClip clip = buttonClickSFX;
-        if (soundMap.TryGetValue(SoundId.ButtonClick, out AudioClip mapped) && mapped != null)
+
+        if (soundMap.TryGetValue(SoundId.ButtonClick, out AudioClip mapped) && mapped != null) 
+        {
             clip = mapped;
-        if (clip == null) return;
+        }
+
+        if (clip == null)
+        {
+            return;
+        }
 
         if (buttonSource == null)
         {
             PlaySFX(clip);
+
             return;
         }
 
         buttonSource.Stop();
         buttonSource.clip = clip;
         buttonSource.spatialBlend = 0f;
+
         float start = Mathf.Clamp(buttonStartTime, 0f, Mathf.Max(0f, clip.length - 0.02f));
+
         buttonSource.time = start;
+
         buttonSource.Play();
     }
 
     void PlayMedicineSwap()
     {
         AudioClip clip = amplifiedSwapClip != null ? amplifiedSwapClip : medicineSwapClip;
-        if (clip == null && soundMap.TryGetValue(SoundId.MedicineSwap, out AudioClip mapped))
+
+        if (clip == null && soundMap.TryGetValue(SoundId.MedicineSwap, out AudioClip mapped)) 
+        {
             clip = mapped;
-        if (clip == null) return;
+        }
+
+        if (clip == null)
+        {
+            return;
+        }
 
         if (swapSource != null)
         {
             swapSource.Stop();
+
             swapSource.clip = clip;
+
             swapSource.spatialBlend = 0f;
+
             swapSource.volume = 1f;
+
             swapSource.Play();
+
             return;
         }
 
@@ -263,11 +369,19 @@ public class AudioManager : MonoBehaviour
     void PrepareMedicineSwapPlayback()
     {
         AudioClip source = medicineSwapClip;
-        if (source == null && soundMap.TryGetValue(SoundId.MedicineSwap, out AudioClip mapped))
+
+        if (source == null && soundMap.TryGetValue(SoundId.MedicineSwap, out AudioClip mapped)) 
+        {
             source = mapped;
-        if (source == null) return;
+        }
+
+        if (source == null)
+        {
+            return;
+        }
 
         source.LoadAudioData();
+
         amplifiedSwapClip = AmplifyClip(source, medicineSwapVolume);
     }
 
@@ -277,6 +391,7 @@ public class AudioManager : MonoBehaviour
             return source;
 
         var data = new float[source.samples * source.channels];
+
         try
         {
             source.GetData(data, 0);
@@ -287,6 +402,7 @@ public class AudioManager : MonoBehaviour
         }
 
         float g = Mathf.Max(1f, gain);
+
         for (int i = 0; i < data.Length; i++)
             data[i] = Mathf.Clamp(data[i] * g, -1f, 1f);
 
