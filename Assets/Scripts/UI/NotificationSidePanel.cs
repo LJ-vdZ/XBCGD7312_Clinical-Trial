@@ -71,12 +71,6 @@ public class NotificationSidePanel : MonoBehaviour
 
     void Update()
     {
-        if (root != null && root.activeSelf && Input.GetKeyDown(KeyCode.Escape))
-        {
-            Dismiss();
-            return;
-        }
-
         if (Time.time >= nextAt)
         {
             if (GameManager.Instance != null && GameManager.Instance.isPowerOut)

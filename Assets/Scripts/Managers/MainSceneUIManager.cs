@@ -63,11 +63,7 @@ public class MainSceneUIManager : MonoBehaviour
         }
         Debug.Log("Added 1 minute to Nurse");
 
-        roleTimeManager.SetAllocation(
-            roleTimeManager.nurseMinutes + 1,
-            roleTimeManager.doctorMinutes,
-            roleTimeManager.janitorMinutes
-        );
+        roleTimeManager.SetAllocation(roleTimeManager.nurseMinutes + 1, roleTimeManager.doctorMinutes, roleTimeManager.janitorMinutes);
     }
 
     void OnDoctorClicked()
@@ -190,6 +186,15 @@ public class MainSceneUIManager : MonoBehaviour
     //inputs
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#endif
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.I))
         {
             OpenInfoPanel();
