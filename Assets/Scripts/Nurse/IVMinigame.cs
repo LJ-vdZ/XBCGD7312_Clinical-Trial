@@ -125,6 +125,22 @@ public class IVMinigame : MonoBehaviour
         else EndGame("Miss");
     }
 
+    public void AbortIfPlaying()
+    {
+        if (!isPlaying)
+            return;
+
+        isPlaying = false;
+
+        if (minigameUI != null)
+            minigameUI.SetActive(false);
+
+        if (MiniGameTimerUI.Instance != null)
+            MiniGameTimerUI.Instance.StopTimer();
+
+        Cursor.visible = true;
+    }
+
     void EndGame(string result)
     {
         isPlaying = false;

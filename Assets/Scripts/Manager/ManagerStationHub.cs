@@ -125,6 +125,11 @@ public class ManagerStationHub : MonoBehaviour
     //close entire hub and restores player control
     public void CloseAll()
     {
+        CloseAll(true);
+    }
+
+    public void CloseAll(bool playCloseSound)
+    {
         if (navPanel != null)
         {
             navPanel.SetActive(false);
@@ -134,7 +139,7 @@ public class ManagerStationHub : MonoBehaviour
 
         LockPlayer(false);
 
-        if (AudioManager.Instance != null)
+        if (playCloseSound && AudioManager.Instance != null)
         {
             AudioManager.Instance.Play("close");
         }

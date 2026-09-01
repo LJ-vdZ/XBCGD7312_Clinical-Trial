@@ -112,11 +112,92 @@ public class CharacterSwitchManager : MonoBehaviour
         }
     }
 
+    //method that closes nurse station, doctor station, and manage station UI when player opens switch ui on top of it and switches roles
+    //fixes ui stacking bug
+    void CloseOpenSystemsUi()
+    {
+        var canvas = NewUIRoot.Ensure();
+
+        if (canvas != null)
+        {
+            var root = canvas.transform;
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var child = root.GetChild(i).gameObject;
+
+                if (KeepSystemsUiOnRoleSwitch(child.name))
+                {
+                    continue;
+                }
+
+                child.SetActive(false);
+            }
+        }
+
+        HideByName("JobSelectionOverlayUI");
+
+        HideByName("NurseUI-IV");
+
+        if (ManagerStationHub.Instance != null)
+        {
+            ManagerStationHub.Instance.CloseAll(false);
+        }
+
+        var mainUi = FindFirstObjectByType<MainSceneUIManager>();
+
+        if (mainUi != null)
+        {
+            mainUi.CloseAllUI();
+        }
+
+        PatientInteractable.CloseOpenCarePanels();
+
+        if (MiniGameTimerUI.Instance != null)
+        {
+            MiniGameTimerUI.Instance.StopTimer();
+        }
+
+        var organizer = FindFirstObjectByType<MedicineOrganizerMinigame>();
+        
+        if (organizer != null)
+        {
+            organizer.AbortIfActive();
+        }
+
+        var iv = FindFirstObjectByType<IVMinigame>();
+
+        if (iv != null)
+        {
+            iv.AbortIfPlaying();
+        }
+    }
+
+    static bool KeepSystemsUiOnRoleSwitch(string panelName)
+    {
+        return panelName == "NotificationSidePanel" || panelName == "EndGameInfoPanel" || panelName == "StatsCollapseEndScreen";
+    }
+
+    static void HideByName(string objectName)
+    {
+        var go = ClinicalUIFactory.FindByName(objectName);
+        
+        if (go != null)
+        {
+            go.SetActive(false);
+        }
+    }
+
     public void SwitchTo(PlayableCharacter next, bool playSound = true)
     {
         if (next == null)
         {
             return;
+        }
+
+        if (active != null)
+        {
+            CloseOpenSystemsUi();
         }
 
         foreach (var character in characters)

@@ -7,6 +7,7 @@ public class SimplePlayerMovement : MonoBehaviour
     [SerializeField] float moveSpeed = 6f;
     [SerializeField] float rotationSpeed = 10f;
     [SerializeField] bool rotateOnlyWhenMovingForward = true;
+    float sprintMultiplier = 12f / 7f;
 
 
     [Header("Gravity")]
@@ -31,11 +32,12 @@ public class SimplePlayerMovement : MonoBehaviour
 
     //---------------------------
     private CharacterController cc;
-    public float speed = 7f;
+    public float speed = 6.5f;
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
+        speed = 6.5f;
 
         //// fallback if not assigned
         ////if (cam == null)
@@ -91,7 +93,10 @@ public class SimplePlayerMovement : MonoBehaviour
             Vector3 camRight = Vector3.ProjectOnPlane(cam.transform.right, Vector3.up).normalized;
             Vector3 moveDir = camForward * input.z + camRight * input.x;
 
-            controller.Move(moveDir * speed * Time.deltaTime);
+            bool sprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            float currentSpeed = sprinting ? speed * sprintMultiplier : speed;
+
+            controller.Move(moveDir * currentSpeed * Time.deltaTime);
 
             if (moveDir.sqrMagnitude > 0.01f)
             {

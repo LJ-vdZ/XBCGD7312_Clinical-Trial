@@ -2838,7 +2838,7 @@ MonoBehaviour:
   rotateOnlyWhenMovingForward: 1
   gravity: -20
   cam: {fileID: 2125928902}
-  speed: 10
+  speed: 6.5
 --- !u!143 &197020935
 CharacterController:
   m_ObjectHideFlags: 0

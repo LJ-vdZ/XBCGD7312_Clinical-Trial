@@ -11,6 +11,7 @@ public class HospitalStatsManager : MonoBehaviour
     public float comfort = 50f;
     public float morale = 50f;
     public int money = 1000;
+    public const int BudgetCollapseThreshold = -600;
 
     //event for UI updates
     public static Action OnStatsChanged;
@@ -77,11 +78,6 @@ public class HospitalStatsManager : MonoBehaviour
     {
         money += amount;
 
-        if (money < 0)
-        {
-            money = 0;
-        }
-
         OnStatsChanged?.Invoke();
     }
 
@@ -109,7 +105,7 @@ public class HospitalStatsManager : MonoBehaviour
             return true;
         }
 
-        if (money <= 0)
+        if (money <= BudgetCollapseThreshold)
         {
             statName = "Budget";
 

@@ -645,6 +645,24 @@ public class PatientInteractable : MonoBehaviour, IInteractable
     static bool doctorUiBound;
     static PatientInteractable activeCareUi;
 
+    public static void CloseOpenCarePanels()
+    {
+        if (sharedCarePanel != null)
+            sharedCarePanel.SetActive(false);
+
+        if (sharedDoctorPanel != null)
+            sharedDoctorPanel.SetActive(false);
+
+        if (MiniGameTimerUI.Instance != null)
+            MiniGameTimerUI.Instance.StopTimer();
+
+        if (activeCareUi != null)
+        {
+            activeCareUi.LockPlayer(false);
+            activeCareUi = null;
+        }
+    }
+
     GameObject carePanel;
     GameObject doctorPanel;
     TextMeshProUGUI nurseTagStatusLabel;
@@ -936,6 +954,14 @@ public class PatientInteractable : MonoBehaviour, IInteractable
 
         if (nurseTagStatusLabel != null)
             nurseTagStatusLabel.text = "Tag: " + panelRecord.SeverityLabel;
+
+        var treatT = ClinicalUIFactory.FindChild(carePanel.transform, "TreatButton");
+        if (treatT != null)
+        {
+            var treatButton = treatT.GetComponent<Button>();
+            if (treatButton != null)
+                treatButton.interactable = panelRecord.severityTagged && !panelRecord.recovered;
+        }
     }
 
     void LockPlayer(bool freeze)

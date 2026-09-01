@@ -103,8 +103,7 @@ public class NotificationSidePanel : MonoBehaviour
                 msg = "Funds were siphoned from the accounts. -R150";
                 if (stats != null)
                 {
-                    stats.money = Mathf.Max(0, stats.money - 150);
-                    HospitalStatsManager.OnStatsChanged?.Invoke();
+                    stats.AddMoney(-150);
                 }
                 break;
             case NotificationType.SuppliesLost:

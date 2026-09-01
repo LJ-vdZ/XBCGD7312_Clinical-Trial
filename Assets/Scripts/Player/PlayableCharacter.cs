@@ -44,6 +44,9 @@ public class PlayableCharacter : MonoBehaviour
             characterController.enabled = controlled;
         }
 
+        //enable and disable body colliders. when player character is not being controlled, collider should be off
+        SetBodyCollidersEnabled(controlled);
+
         if (movement != null)
         {
             movement.enabled = controlled;
@@ -64,6 +67,36 @@ public class PlayableCharacter : MonoBehaviour
         catch (UnityException)
         {
             Debug.Log("Tag missing in TagManager");
+        }
+    }
+
+    //method to enable and disable body colliders based on if the player character is being controlled
+    //helps players move around other playable roles without needing to switch roles to move the other character out of the way
+    void SetBodyCollidersEnabled(bool enabled)
+    {
+        var colliders = GetComponentsInChildren<Collider>(true);
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            var col = colliders[i];
+
+            if (col == null)
+            {
+                continue;
+            }
+
+            //carried props stay on the character transform. leave prop colliders alone.
+            if (col.GetComponentInParent<JanitorCartController>() != null)
+            {
+                continue;
+            }
+
+            if (col.GetComponentInParent<TrashItem>() != null)
+            {
+                continue;
+            }
+
+            col.enabled = enabled;
         }
     }
 }

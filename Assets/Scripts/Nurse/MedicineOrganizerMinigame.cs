@@ -391,6 +391,11 @@ public class MedicineOrganizerMinigame : MonoBehaviour
         ExitMinigame();
     }
 
+    public void AbortIfActive()
+    {
+        ForceExit();
+    }
+
     void ForceExit()
     {
         if (active) ExitMinigame();

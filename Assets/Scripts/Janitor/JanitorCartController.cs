@@ -130,7 +130,7 @@ public class JanitorCartController : MonoBehaviour, IInteractable
             MiniGameTimerUI.Instance.StartTimer("Janitor Shift Tasks", 120f, null);
         }
 
-        //E is dispose trash, if being held, into bin on cart. Attach and detach cart is Q 
+        //E grabs the cart, or disposes held trash into a cart bin. Q drops held trash or the cart. 
         var janitor = player.GetComponent<JanitorAbilities>();
 
         if (janitor != null && janitor.heldTrash != null)
@@ -140,49 +140,15 @@ public class JanitorCartController : MonoBehaviour, IInteractable
             return;
         }
 
-        if (NotificationSidePanel.Instance != null)
+        if (!isCarried)
         {
-            NotificationSidePanel.Instance.ShowRaw("Press Q to grab or drop the cart.");
+            Attach(player);
         }
     }
 
     void Update()
     {
         UpdateCartMoveAudio();
-
-        if (!Input.GetKeyDown(KeyCode.Q))
-        {
-            return;
-        }
-
-        GameObject player = ResolveJanitorPlayer();
-
-        if (player == null)
-        {
-            return;
-        }
-
-        var janitor = player.GetComponent<JanitorAbilities>();
-
-        if (janitor != null && janitor.heldTrash != null)
-        {
-            return;
-        }
-
-        if (isCarried)
-        {
-            Detach();
-
-            return;
-        }
-
-        //grab when standing near cart only
-        if (!IsPlayerNearOrTargeting(player))
-        {
-            return;
-        }
-
-        Attach(player);
     }
 
     //find active janitor player object
@@ -216,27 +182,6 @@ public class JanitorCartController : MonoBehaviour, IInteractable
         }
 
         return null;
-    }
-
-    //check if player is close to cart
-    bool IsPlayerNearOrTargeting(GameObject player)
-    {
-        if (player == null)
-        {
-            return false;
-        }
-
-        var handler = player.GetComponent<PlayerInteractionHandler>();
-
-        if (handler != null && ReferenceEquals(handler.GetCurrentTarget(), this))
-        {
-            return true;
-        }
-
-        //safety net if trigger failed
-        float distance = Vector3.Distance(player.transform.position, transform.position);
-
-        return distance <= 3.5f;
     }
 
     //attach cart to player at carry point for cart

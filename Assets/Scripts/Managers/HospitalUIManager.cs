@@ -10,7 +10,9 @@ public class HospitalUIManager : MonoBehaviour
     public Slider moraleSlider;
 
     [Header("Money UI")]
-    public TextMeshProUGUI moneyText; 
+    public TextMeshProUGUI moneyText;
+
+    Color moneyPositiveColor = Color.white;
 
     private void OnEnable()
     {
@@ -24,19 +26,90 @@ public class HospitalUIManager : MonoBehaviour
 
     private void Start()
     {
-        UpdateUI(); //update ui at start
+        if (moneyText == null)
+        {
+            moneyText = FindMoneyLabel();
+        }
+
+        if (moneyText != null)
+        {
+            moneyPositiveColor = moneyText.color;
+        }
+
+        UpdateUI();
     }
 
     void UpdateUI()
     {
         var stats = HospitalStatsManager.Instance;
 
-        //update sliders
-        sanitationSlider.value = stats.sanitation;
-        comfortSlider.value = stats.comfort;
-        moraleSlider.value = stats.morale;
+        if (stats == null)
+        {
+            return;
+        }
 
-        //update money - not a slider
-        moneyText.text = "R" + stats.money.ToString();
+        if (sanitationSlider != null)
+        {
+            sanitationSlider.value = stats.sanitation;
+
+        }
+            
+        if (comfortSlider != null)
+        {
+            comfortSlider.value = stats.comfort;
+        }
+
+        if (moraleSlider != null)
+        {
+            moraleSlider.value = stats.morale;
+        }
+
+        if (moneyText == null)
+        {
+            moneyText = FindMoneyLabel();
+        }
+            
+
+        if (moneyText == null)
+        {
+            return;
+        }
+
+        if (stats.money < 0)
+        {
+            moneyText.text = "-R" + Mathf.Abs(stats.money);
+
+            moneyText.color = Color.red;
+        }
+        else
+        {
+            moneyText.text = "R" + stats.money;
+
+            moneyText.color = moneyPositiveColor;
+        }
+    }
+
+    static TextMeshProUGUI FindMoneyLabel()
+    {
+        string[] names = { "MoneytTxt", "Moneytxt", "MoneyTxt" };
+
+        foreach (var n in names)
+        {
+            var go = ClinicalUIFactory.FindByName(n);
+
+            if (go == null)
+            {
+                continue;
+            }
+
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+
+            if (tmp != null)
+            {
+                return tmp;
+            }
+        }
+
+        return null;
     }
 }
