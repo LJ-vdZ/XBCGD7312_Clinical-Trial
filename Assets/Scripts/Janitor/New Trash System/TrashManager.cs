@@ -14,6 +14,8 @@ public class TrashManager : MonoBehaviour
 
     public Button addTrashBtn;
 
+    float timer = 5; //temp
+
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -24,7 +26,16 @@ public class TrashManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        //Temp
+        timer -= Time.deltaTime;
+
+        if (timer <= 0f)
+        {
+            timer = 5f;
+
+            // Call your function here
+            AddTrash();
+        }
     }
 
     void OnTrashButtonClicked()

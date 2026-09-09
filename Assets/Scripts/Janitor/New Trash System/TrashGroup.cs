@@ -10,17 +10,17 @@ public class TrashGroup : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        trashIndex = 0;
-        for (int i = 0; i < trash.Count; i++)
-        {
-            trash[i].SetActive(false);
-        }
+        //trashIndex = 0;                         
+        //for (int i = 0; i < trash.Count; i++)
+        //{
+        //    addTrash();
+        //}                                       
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+
     }
 
     public bool addTrash()
