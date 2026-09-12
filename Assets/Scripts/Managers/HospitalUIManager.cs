@@ -12,7 +12,18 @@ public class HospitalUIManager : MonoBehaviour
     [Header("Money UI")]
     public TextMeshProUGUI moneyText;
 
+    //colours for the slider stats
     Color moneyPositiveColor = Color.white;
+    Color sanitationFillDefault = Color.white;
+    Color comfortFillDefault = Color.white;
+    Color moraleFillDefault = Color.white;
+    bool sliderColorsCached;
+
+    //colour for when stats are less than 40%. orange
+    static readonly Color StatOrange = new Color(1f, 0.55f, 0.1f, 1f);
+
+    //colour for when stats are less than 25%. red
+    static readonly Color StatRed = new Color(0.9f, 0.15f, 0.12f, 1f);
 
     private void OnEnable()
     {
@@ -35,6 +46,9 @@ public class HospitalUIManager : MonoBehaviour
         {
             moneyPositiveColor = moneyText.color;
         }
+
+
+        SliderFillDefaults();
 
         UpdateUI();
     }
@@ -61,20 +75,82 @@ public class HospitalUIManager : MonoBehaviour
         if (sanitationSlider != null)
         {
             sanitationSlider.value = stats.sanitation;
-
+            ApplyStatFillColor(sanitationSlider, stats.sanitation, sanitationFillDefault);
         }
             
         if (comfortSlider != null)
         {
             comfortSlider.value = stats.comfort;
+            ApplyStatFillColor(comfortSlider, stats.comfort, comfortFillDefault);
         }
 
         if (moraleSlider != null)
         {
             moraleSlider.value = stats.morale;
+            ApplyStatFillColor(moraleSlider, stats.morale, moraleFillDefault);
         }
 
         UpdateMoneyText(stats);
+    }
+
+    //set default colours for sliders
+    void SliderFillDefaults()
+    {
+        if (sliderColorsCached)
+        {
+            return;
+        }
+
+        sanitationFillDefault = GetFillColor(sanitationSlider, Color.white);
+
+        comfortFillDefault = GetFillColor(comfortSlider, Color.white);
+
+        moraleFillDefault = GetFillColor(moraleSlider, Color.white);
+
+        sliderColorsCached = true;
+    }
+
+    //original colour of slider
+    static Color GetFillColor(Slider slider, Color fallback)
+    {
+        if (slider == null || slider.fillRect == null)
+        {
+            return fallback;
+        }
+
+        var image = slider.fillRect.GetComponent<Image>();
+
+        return image != null ? image.color : fallback;
+    }
+
+    //change colour when slider below certain percentage
+    static void ApplyStatFillColor(Slider slider, float value, Color defaultColor)
+    {
+        if (slider == null || slider.fillRect == null)
+        {
+            return;
+        }
+
+        var image = slider.fillRect.GetComponent<Image>();
+
+        if (image == null)
+        {
+            return;
+        }
+
+        //stats are 0–100. orange at/below 40, red at/below 25.
+        if (value <= 25f)
+        {
+            image.color = StatRed;
+        }
+        else if (value <= 40f)
+        {
+            image.color = StatOrange;
+        }
+        else
+        {
+            image.color = defaultColor;
+        }
     }
 
     void UpdateMoneyText(HospitalStatsManager stats)
