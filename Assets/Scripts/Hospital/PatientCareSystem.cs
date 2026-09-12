@@ -241,12 +241,14 @@ public class PatientCareSystem : MonoBehaviour
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = Color.white;
             tmp.text = "";
+            EnsureStatusLabelBackground(tmp);
             record.statusWorldText = tmp;
             pi.statusWorldText = tmp;
             pi.SetStatusWorldAnchor(anchor);
         }
         else
         {
+            EnsureStatusLabelBackground(record.statusWorldText);
             pi.SetStatusWorldAnchor(record.statusWorldText.transform.position);
         }
     }
@@ -262,11 +264,65 @@ public class PatientCareSystem : MonoBehaviour
                 if (renderers[i] != null)
                     b.Encapsulate(renderers[i].bounds);
             }
-            // Sit above the bed/patient bounds (a bit higher than before).
-            return new Vector3(b.center.x, b.max.y + 0.85f, b.center.z);
+            // Near eye level relative to the bed/patient.
+            return new Vector3(b.center.x, b.max.y + 0.35f, b.center.z);
         }
 
-        return go.transform.position + Vector3.up * 2.4f;
+        return go.transform.position + Vector3.up * 1.9f;
+    }
+
+    static Sprite statusLabelBgSprite;
+
+    static void EnsureStatusLabelBackground(TextMeshPro tmp)
+    {
+        if (tmp == null) return;
+
+        Transform bgT = tmp.transform.Find("LabelBackground");
+        SpriteRenderer sr;
+        if (bgT == null)
+        {
+            var bgGo = new GameObject("LabelBackground");
+            bgGo.transform.SetParent(tmp.transform, false);
+            bgGo.transform.localRotation = Quaternion.identity;
+            sr = bgGo.AddComponent<SpriteRenderer>();
+            if (statusLabelBgSprite == null)
+            {
+                var tex = Texture2D.whiteTexture;
+                statusLabelBgSprite = Sprite.Create(
+                    tex,
+                    new Rect(0f, 0f, tex.width, tex.height),
+                    new Vector2(0.5f, 0.5f),
+                    100f);
+            }
+            sr.sprite = statusLabelBgSprite;
+            sr.color = ClinicalUIFactory.GetPanelColor();
+            sr.sortingOrder = -1;
+        }
+        else
+        {
+            sr = bgT.GetComponent<SpriteRenderer>();
+            if (sr == null) return;
+        }
+
+        FitStatusLabelBackground(tmp, sr);
+    }
+
+    static void FitStatusLabelBackground(TextMeshPro tmp, SpriteRenderer sr)
+    {
+        if (tmp == null || sr == null) return;
+
+        tmp.ForceMeshUpdate();
+        Bounds b = tmp.textBounds;
+        const float padX = 0.22f;
+        const float padY = 0.14f;
+        float width = Mathf.Max(0.6f, b.size.x + padX);
+        float height = Mathf.Max(0.35f, b.size.y + padY);
+
+        // White sprite is created at 100 PPU from a 4x4 texture (≈0.04 world units).
+        const float spriteWorldSize = 4f / 100f;
+        sr.transform.localScale = new Vector3(width / spriteWorldSize, height / spriteWorldSize, 1f);
+        sr.transform.localPosition = new Vector3(b.center.x, b.center.y, 0.05f);
+        sr.color = ClinicalUIFactory.GetPanelColor();
     }
 
     /// <summary>
@@ -397,11 +453,17 @@ public class PatientCareSystem : MonoBehaviour
             body = $"{record.SeverityLabel}\nAwaiting treat";
 
         record.statusWorldText.text = $"{record.patientName}\n{body}{infection}";
-        record.statusWorldText.color = !record.severityTagged
-            ? new Color(1f, 0.9f, 0.4f)
-            : record.severity == PatientSeverity.Critical
-                ? new Color(1f, 0.35f, 0.35f)
-                : new Color(0.85f, 0.95f, 0.85f);
+
+        // Critical / needs doctor = red; unattended or not critical = orange-yellow; recovering = green.
+        if (record.recovered)
+            record.statusWorldText.color = new Color(0.35f, 0.9f, 0.4f);
+        else if (record.severityTagged
+                 && (record.severity == PatientSeverity.Critical || record.queue == PatientQueue.Doctor))
+            record.statusWorldText.color = new Color(1f, 0.28f, 0.28f);
+        else
+            record.statusWorldText.color = new Color(1f, 0.78f, 0.28f);
+
+        EnsureStatusLabelBackground(record.statusWorldText);
     }
 
     public void AddIncomingPatients(int amount)
