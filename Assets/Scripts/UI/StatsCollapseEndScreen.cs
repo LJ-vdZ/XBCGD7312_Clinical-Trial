@@ -4,7 +4,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Failure end screen when sanitation, comfort, or morale hits 0, or budget hits -R600.
+/// Failure end screen when sanitation, comfort, or morale hits 0,
+/// budget goes below NegativeMoneyLimit, or the hospital stays in deficit too long.
 /// Scene object: StatsCollapseEndScreen under NewFeatureUICanvas.
 /// </summary>
 public class StatsCollapseEndScreen : MonoBehaviour
@@ -62,7 +63,8 @@ public class StatsCollapseEndScreen : MonoBehaviour
         {
             bodyLabel.text =
                 collapsedStat == "Budget"
-                    ? "Critical failure: <b>Budget</b> fell to -R600.\n\n" +
+                    ? "Critical failure: <b>Budget</b> collapsed.\n\n" +
+                      "The hospital went below the overdraft limit, or stayed in deficit for too long.\n\n" +
                       "Without sanitation, comfort, morale, or funding, the hospital can no longer care for its patients.\n\n" +
                       "Learn more about organisations working on health justice:"
                     : $"Critical failure: <b>{collapsedStat}</b> reached zero.\n\n" +

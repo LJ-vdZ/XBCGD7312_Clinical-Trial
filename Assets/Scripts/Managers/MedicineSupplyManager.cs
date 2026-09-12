@@ -105,8 +105,7 @@ public class MedicineSupplyManager : MonoBehaviour
         return null;
     }
 
-    public bool CanAffordBox() => HospitalStatsManager.Instance != null
-                                  && HospitalStatsManager.Instance.money >= BoxPrice;
+    public bool CanAffordBox() => HospitalStatsManager.Instance != null;
 
     public bool TryPurchaseBox()
     {

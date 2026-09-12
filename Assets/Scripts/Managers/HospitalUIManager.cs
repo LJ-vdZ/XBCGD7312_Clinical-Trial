@@ -39,6 +39,16 @@ public class HospitalUIManager : MonoBehaviour
         UpdateUI();
     }
 
+    void Update()
+    {
+        var stats = HospitalStatsManager.Instance;
+
+        if (stats != null && stats.IsDeficitTimerRunning)
+        {
+            UpdateMoneyText(stats);
+        }
+    }
+
     void UpdateUI()
     {
         var stats = HospitalStatsManager.Instance;
@@ -64,27 +74,39 @@ public class HospitalUIManager : MonoBehaviour
             moraleSlider.value = stats.morale;
         }
 
+        UpdateMoneyText(stats);
+    }
+
+    void UpdateMoneyText(HospitalStatsManager stats)
+    {
         if (moneyText == null)
         {
             moneyText = FindMoneyLabel();
         }
-            
 
         if (moneyText == null)
         {
             return;
         }
 
-        if (stats.money < 0)
-        {
-            moneyText.text = "-R" + Mathf.Abs(stats.money);
+        string amount = HospitalStatsManager.FormatMoney(stats.money);
 
+        if (stats.IsDeficitTimerRunning)
+        {
+            int remaining = Mathf.CeilToInt(stats.GetDeficitTimeRemaining());
+            int minutes = remaining / 60;
+            int seconds = remaining % 60;
+            moneyText.text = $"{amount}  {minutes}:{seconds:00}";
+            moneyText.color = Color.red;
+        }
+        else if (stats.money < 0)
+        {
+            moneyText.text = amount;
             moneyText.color = Color.red;
         }
         else
         {
-            moneyText.text = "R" + stats.money;
-
+            moneyText.text = amount;
             moneyText.color = moneyPositiveColor;
         }
     }

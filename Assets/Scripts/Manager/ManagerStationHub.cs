@@ -325,7 +325,7 @@ public class ManagerStationHub : MonoBehaviour
         int count = MedicineSupplyManager.Instance != null ? MedicineSupplyManager.Instance.medicineCount : 0;
         int money = HospitalStatsManager.Instance != null ? HospitalStatsManager.Instance.money : 0;
 
-        medicineCountLabel.text = $"Supply on shelves: {count},  Budget now: R{money}";
+        medicineCountLabel.text = $"Supply on shelves: {count},  Budget now: {HospitalStatsManager.FormatMoney(money)}";
 
         if (storeInfo != null)
         {
