@@ -175,7 +175,10 @@ public class CharacterSwitchManager : MonoBehaviour
 
     static bool KeepSystemsUiOnRoleSwitch(string panelName)
     {
-        return panelName == "NotificationSidePanel" || panelName == "EndGameInfoPanel" || panelName == "StatsCollapseEndScreen";
+        return panelName == "NotificationSidePanel"
+            || panelName == "PowerOutagePanel"
+            || panelName == "EndGameInfoPanel"
+            || panelName == "StatsCollapseEndScreen";
     }
 
     static void HideByName(string objectName)

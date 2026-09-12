@@ -15,6 +15,7 @@ using UnityEngine;
 [RequireComponent(typeof(MiniGameTimerUI))]
 [RequireComponent(typeof(ManagerStationHub))]
 [RequireComponent(typeof(NotificationSidePanel))]
+[RequireComponent(typeof(PowerOutagePanel))]
 [RequireComponent(typeof(EndGameInfoPanel))]
 [RequireComponent(typeof(StatsCollapseEndScreen))]
 [RequireComponent(typeof(CharacterMoraleSystem))]
@@ -51,6 +52,8 @@ public class FeatureBootstrap : MonoBehaviour
         RequireExisting<ManagerStationHub>();
 
         RequireExisting<NotificationSidePanel>();
+
+        RequireExisting<PowerOutagePanel>();
 
         RequireExisting<EndGameInfoPanel>();
 

@@ -138,9 +138,9 @@ public class GameManager : MonoBehaviour
 
         int secs = Mathf.CeilToInt(outageMaxTime);
 
-        if (NotificationSidePanel.Instance != null) 
+        if (PowerOutagePanel.Instance != null) 
         {
-            NotificationSidePanel.Instance.ShowPowerOutage(secs);
+            PowerOutagePanel.Instance.ShowOutage(secs);
         }
             
 
@@ -185,9 +185,9 @@ public class GameManager : MonoBehaviour
         {
             lastNotifiedSeconds = secsLeft;
 
-            if (NotificationSidePanel.Instance != null) 
+            if (PowerOutagePanel.Instance != null) 
             {
-                NotificationSidePanel.Instance.UpdatePowerOutageCountdown(secsLeft);
+                PowerOutagePanel.Instance.UpdateCountdown(secsLeft);
             }
                 
         }
@@ -224,9 +224,9 @@ public class GameManager : MonoBehaviour
         }
             
 
-        if (NotificationSidePanel.Instance != null) 
+        if (PowerOutagePanel.Instance != null) 
         {
-            NotificationSidePanel.Instance.ShowPowerRestored();
+            PowerOutagePanel.Instance.ShowRestored();
         }
             
 

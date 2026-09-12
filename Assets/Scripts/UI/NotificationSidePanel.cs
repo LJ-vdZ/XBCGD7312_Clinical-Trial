@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +14,7 @@ public enum NotificationType
 /// <summary>
 /// Side panel with randomized hospital event notifications that apply stat effects on appear.
 /// Scene object: NotificationSidePanel under NewFeatureUICanvas.
+/// Each shown notification lasts 240s with a circular countdown; new ones wait until it finishes.
 /// </summary>
 public class NotificationSidePanel : MonoBehaviour
 {
@@ -20,11 +22,20 @@ public class NotificationSidePanel : MonoBehaviour
 
     [SerializeField] float intervalMin = 45f;
     [SerializeField] float intervalMax = 90f;
+    [SerializeField] float displayDuration = 240f;
 
     GameObject root;
     TextMeshProUGUI title;
     TextMeshProUGUI body;
     float nextAt;
+
+    bool isDisplaying;
+    float displayRemaining;
+    Image timerFill;
+    Image timerBackground;
+    static Sprite circleSprite;
+
+    readonly Queue<(string heading, string message)> pending = new Queue<(string, string)>();
 
     void Awake() => Instance = this;
 
@@ -55,13 +66,76 @@ public class NotificationSidePanel : MonoBehaviour
         title = ClinicalUIFactory.FindLabel(root.transform, "TitleLabel");
         body = ClinicalUIFactory.FindLabel(root.transform, "BodyLabel");
         ClinicalUIFactory.BindButton(root.transform, "Dismiss (Esc)Button", Dismiss);
+        EnsureTimerUi();
         root.SetActive(false);
+    }
+
+    void EnsureTimerUi()
+    {
+        if (timerFill != null || root == null) return;
+
+        if (circleSprite == null)
+            circleSprite = CreateCircleSprite(64);
+
+        timerBackground = CreateTimerImage("NotificationTimerBg", root.transform, new Color(0.15f, 0.2f, 0.25f, 0.9f), false);
+        timerFill = CreateTimerImage("NotificationTimerFill", root.transform, new Color(0.35f, 0.75f, 0.85f, 1f), true);
+        timerFill.fillAmount = 1f;
+    }
+
+    static Image CreateTimerImage(string name, Transform parent, Color color, bool filled)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        go.transform.SetParent(parent, false);
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(-14f, -14f);
+        rt.sizeDelta = new Vector2(42f, 42f);
+
+        var img = go.GetComponent<Image>();
+        img.sprite = circleSprite;
+        img.color = color;
+        img.raycastTarget = false;
+        img.preserveAspect = true;
+
+        if (filled)
+        {
+            img.type = Image.Type.Filled;
+            img.fillMethod = Image.FillMethod.Radial360;
+            img.fillOrigin = (int)Image.Origin360.Top;
+            img.fillClockwise = false;
+            img.fillAmount = 1f;
+        }
+
+        return img;
+    }
+
+    static Sprite CreateCircleSprite(int size)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        float center = (size - 1) * 0.5f;
+        float radius = center - 0.5f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                float alpha = Mathf.Clamp01(radius - dist + 0.5f);
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+
+        tex.Apply(false, true);
+        return Sprite.Create(tex, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
     }
 
     public void Dismiss()
     {
-        if (root != null)
-            root.SetActive(false);
+        // Manual dismiss still ends the current alert; queued ones wait their turn.
+        FinishCurrentAndShowNext();
     }
 
     void ScheduleNext()
@@ -71,6 +145,16 @@ public class NotificationSidePanel : MonoBehaviour
 
     void Update()
     {
+        if (isDisplaying)
+        {
+            displayRemaining -= Time.deltaTime;
+            if (timerFill != null)
+                timerFill.fillAmount = Mathf.Clamp01(displayRemaining / displayDuration);
+
+            if (displayRemaining <= 0f)
+                FinishCurrentAndShowNext();
+        }
+
         if (Time.time >= nextAt)
         {
             if (GameManager.Instance != null && GameManager.Instance.isPowerOut)
@@ -79,8 +163,33 @@ public class NotificationSidePanel : MonoBehaviour
                 return;
             }
 
+            // Random events wait until the active notification timer finishes.
+            if (isDisplaying)
+            {
+                nextAt = Time.time + 1f;
+                return;
+            }
+
             FireRandom();
             ScheduleNext();
+        }
+    }
+
+    void FinishCurrentAndShowNext()
+    {
+        isDisplaying = false;
+        displayRemaining = 0f;
+
+        if (timerFill != null)
+            timerFill.fillAmount = 0f;
+
+        if (root != null)
+            root.SetActive(false);
+
+        if (pending.Count > 0)
+        {
+            var next = pending.Dequeue();
+            DisplayNow(next.message, next.heading);
         }
     }
 
@@ -133,8 +242,29 @@ public class NotificationSidePanel : MonoBehaviour
     public void ShowRaw(string message, string heading = "Hospital Alert")
     {
         if (root == null) BindScenePanel();
+
+        if (isDisplaying)
+        {
+            pending.Enqueue((heading, message));
+            return;
+        }
+
+        DisplayNow(message, heading);
+    }
+
+    void DisplayNow(string message, string heading)
+    {
+        EnsureTimerUi();
+
         if (title != null) title.text = heading;
         if (body != null) body.text = message;
+
+        displayRemaining = displayDuration;
+        isDisplaying = true;
+
+        if (timerFill != null)
+            timerFill.fillAmount = 1f;
+
         if (root != null)
         {
             root.SetActive(true);
@@ -143,30 +273,5 @@ public class NotificationSidePanel : MonoBehaviour
 
         if (AudioManager.Instance != null)
             AudioManager.Instance.Play("PopUpNontification");
-    }
-
-    public void ShowPowerOutage(int secondsRemaining)
-    {
-        ShowRaw(PowerOutageBody(secondsRemaining), "Power Outage");
-    }
-
-    public void UpdatePowerOutageCountdown(int secondsRemaining)
-    {
-        if (root == null || !root.activeSelf) return;
-        if (title != null) title.text = "Power Outage";
-        if (body != null) body.text = PowerOutageBody(secondsRemaining);
-    }
-
-    public void ShowPowerRestored()
-    {
-        ShowRaw(
-            "Power has been restored. Hospital stats have returned to their normal pace.",
-            "Power Restored");
-    }
-
-    static string PowerOutageBody(int secondsRemaining)
-    {
-        return "Hospital power is down. Hygiene, comfort and morale are dropping faster.\n" +
-               $"Power returns in {Mathf.Max(0, secondsRemaining)}s.";
     }
 }
