@@ -12,7 +12,7 @@ public class TrashManager : MonoBehaviour
 
     public int trashAccumulationRate = 1;
 
-    public Button addTrashBtn;
+    //public Button addTrashBtn;
 
     float timer = 5; //temp
 
@@ -20,7 +20,7 @@ public class TrashManager : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        addTrashBtn.onClick.AddListener(OnTrashButtonClicked);
+        //addTrashBtn.onClick.AddListener(OnTrashButtonClicked);
     }
 
     // Update is called once per frame
