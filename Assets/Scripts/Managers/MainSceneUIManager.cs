@@ -160,7 +160,8 @@ public class MainSceneUIManager : MonoBehaviour
         SetPlayerControl(true);
     }
 
-    void SetPlayerControl(bool enabled)
+
+    public void SetPlayerControl(bool enabled)
     {
         var active = CharacterSwitchManager.Instance != null
             ? CharacterSwitchManager.Instance.ActiveCharacter
