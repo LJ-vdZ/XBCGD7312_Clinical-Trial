@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 60e3cfe50eddb014cb70173ab3c5faf3
+guid: 0397e4cd3a3b4c04688e3421265d1157
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -31,9 +31,38 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: Visitor1_Idle
+      name: JanitorWalk_anim
       takeName: WalkIdlePushCarry
       internalID: 4910021125267330377
+      firstFrame: 0
+      lastFrame: 237
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: JanitorIdle_anim
+      takeName: Janitor_Rigged|WalkIdlePushCarry
+      internalID: -3790737870306216356
       firstFrame: 250
       lastFrame: 750
       wrapMode: 0
@@ -60,11 +89,40 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: Visitor1_Idle (1)
-      takeName: Manager_Rigged|WalkIdlePushCarry
-      internalID: 8605205918854112740
-      firstFrame: 250
-      lastFrame: 750
+      name: JanitorPushCart_anim
+      takeName: Janitor_Rigged|WalkIdlePushCarry
+      internalID: 1286586947384588497
+      firstFrame: 760
+      lastFrame: 839
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: JanitorPickupWalk_anim
+      takeName: Janitor_Rigged|WalkIdlePushCarry
+      internalID: 8147251123316427693
+      firstFrame: 850
+      lastFrame: 925
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
