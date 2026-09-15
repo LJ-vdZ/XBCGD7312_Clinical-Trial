@@ -231,7 +231,7 @@ public class PatientCareSystem : MonoBehaviour
                 tmp = labelGo.AddComponent<TextMeshPro>();
             }
 
-            // World-fixed above the bed so cough/idle animation does not bounce the text.
+            // World-fixed near the patient so cough/idle animation does not bounce the text.
             Vector3 anchor = ResolvePatientLabelWorldPosition(go);
             labelGo.transform.SetParent(null, true);
             labelGo.transform.position = anchor;
@@ -249,7 +249,9 @@ public class PatientCareSystem : MonoBehaviour
         else
         {
             EnsureStatusLabelBackground(record.statusWorldText);
-            pi.SetStatusWorldAnchor(record.statusWorldText.transform.position);
+            Vector3 anchor = ResolvePatientLabelWorldPosition(go);
+            record.statusWorldText.transform.position = anchor;
+            pi.SetStatusWorldAnchor(anchor);
         }
     }
 
@@ -264,11 +266,12 @@ public class PatientCareSystem : MonoBehaviour
                 if (renderers[i] != null)
                     b.Encapsulate(renderers[i].bounds);
             }
-            // Near eye level relative to the bed/patient.
-            return new Vector3(b.center.x, b.max.y + 0.35f, b.center.z);
+            // Eye / head level on the bed patient (was floating above b.max.y).
+            float eyeY = Mathf.Lerp(b.center.y, b.max.y, 0.35f);
+            return new Vector3(b.center.x, eyeY, b.center.z);
         }
 
-        return go.transform.position + Vector3.up * 1.9f;
+        return go.transform.position + Vector3.up * 1.45f;
     }
 
     static Sprite statusLabelBgSprite;
