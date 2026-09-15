@@ -34,6 +34,10 @@ public class SimplePlayerMovement : MonoBehaviour
     private CharacterController cc;
     public float speed = 6.5f;
 
+    public bool IsMoving { get; private set; }
+    public bool IsSprinting { get; private set; }
+    public float CurrentMoveSpeed { get; private set; }
+
     void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -51,7 +55,13 @@ public class SimplePlayerMovement : MonoBehaviour
 
     void Update()
     {
-        if (!controlsEnabled) return;
+        if (!controlsEnabled)
+        {
+            IsMoving = false;
+            IsSprinting = false;
+            CurrentMoveSpeed = 0f;
+            return;
+        }
         
 
         //if (useInternalCameraCode)
@@ -65,27 +75,13 @@ public class SimplePlayerMovement : MonoBehaviour
 
     void HandleMovement()
     {
-        //if (cam == null)
-        //{
-        //    Debug.LogWarning("SimplePlayerMovement: cam is not assigned.");
-        //    return;
-        //}
-        //float h = Input.GetAxisRaw("Horizontal");
-        //float v = Input.GetAxisRaw("Vertical");
-        //Vector3 input = new Vector3(h, 0f, v);
-        //if (input.sqrMagnitude > 1f)
-        //    input.Normalize();
-        //// Camera-relative basis (flattened)
-        //Vector3 camForward = Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized;
-        //Vector3 camRight = Vector3.ProjectOnPlane(cam.transform.right, Vector3.up).normalized;
-        //Vector3 moveDir = camForward * input.z + camRight * input.x;
-        //Vector3 frameMove = moveDir * moveSpeed;
-        //frameMove.y = velocity.y;
-        //controller.Move(frameMove * Time.deltaTime);
-
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
         Vector3 input = new Vector3(h, 0, v).normalized;
+
+        IsMoving = false;
+        IsSprinting = false;
+        CurrentMoveSpeed = 0f;
 
         if (input.sqrMagnitude > 0.01f)
         {
@@ -97,6 +93,10 @@ public class SimplePlayerMovement : MonoBehaviour
             float currentSpeed = sprinting ? speed * sprintMultiplier : speed;
 
             controller.Move(moveDir * currentSpeed * Time.deltaTime);
+
+            IsMoving = true;
+            IsSprinting = sprinting;
+            CurrentMoveSpeed = currentSpeed;
 
             if (moveDir.sqrMagnitude > 0.01f)
             {

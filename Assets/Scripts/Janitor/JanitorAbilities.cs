@@ -36,6 +36,10 @@ public class JanitorAbilities : MonoBehaviour
 
         trash.transform.localRotation = Quaternion.identity;
 
+        var anim = GetComponent<CharacterAnimationDriver>();
+        if (anim != null)
+            anim.NotifyTrashPickedUp();
+
         Debug.Log($"Picked up {trash.type}");
     }
 

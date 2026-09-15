@@ -22,6 +22,10 @@ public class DirtPile : MonoBehaviour, IInteractable
         if (AudioManager.Instance != null)
             AudioManager.Instance.Play("clean");
 
+        var anim = player != null ? player.GetComponent<CharacterAnimationDriver>() : null;
+        if (anim != null)
+            anim.NotifySweeping();
+
         Destroy(gameObject);
         Debug.Log("Trash swept! +Sanitation");
     }

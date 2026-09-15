@@ -217,6 +217,10 @@ public class JanitorCartController : MonoBehaviour, IInteractable
 
         isCarried = true;
 
+        var anim = player.GetComponent<CharacterAnimationDriver>();
+        if (anim != null)
+            anim.NotifyCartAttached();
+
         Debug.Log("Cart attached to " + activeAttachPoint.name + ". Press Q to drop");
     }
 

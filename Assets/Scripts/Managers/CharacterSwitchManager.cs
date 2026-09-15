@@ -533,10 +533,15 @@ public class CharacterSwitchManager : MonoBehaviour
             gameObject.AddComponent<FootstepAudio>();
         }
 
-
         if (role == RoleType.Janitor && gameObject.GetComponent<JanitorAbilities>() == null) 
         {
             gameObject.AddComponent<JanitorAbilities>();
+        }
+
+        if (gameObject.GetComponent<CharacterAnimationDriver>() == null
+            && gameObject.GetComponentInChildren<Animator>(true) != null)
+        {
+            gameObject.AddComponent<CharacterAnimationDriver>();
         }
             
     }
