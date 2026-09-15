@@ -7,10 +7,14 @@ using UnityEngine;
 [RequireComponent(typeof(PlayableCharacter))]
 public class CharacterAnimationDriver : MonoBehaviour
 {
+    const string SweepMopSourcePath = "Assets/Animations/Janitor2_Anims.fbx";
+    const string SweepMopObjectName = "Mop";
+
     [SerializeField] float crossFade = 0.12f;
     [SerializeField] float sprintAnimSpeed = 1.45f;
     [SerializeField] float sweepDuration = 1.35f;
     [SerializeField] float pickupFallbackDuration = 1.1f;
+    [SerializeField] GameObject sweepMopSourcePrefab;
 
     Animator animator;
     SimplePlayerMovement movement;
@@ -23,6 +27,8 @@ public class CharacterAnimationDriver : MonoBehaviour
     bool playingPickup;
     float pickupEndsAt;
     float sweepEndsAt;
+    GameObject sweepMop;
+    bool sweepMopVisible;
 
     void Awake()
     {
@@ -38,6 +44,8 @@ public class CharacterAnimationDriver : MonoBehaviour
         if (animator == null)
             animator = GetComponentInChildren<Animator>(true);
         ResolveStateNames();
+        if (playable != null && playable.role == RoleType.Janitor)
+            EnsureSweepMop(false);
         PlayState(idleState, 0f);
     }
 
@@ -79,6 +87,7 @@ public class CharacterAnimationDriver : MonoBehaviour
 
         bool moving = movement != null && movement.AreControlsEnabled() && movement.IsMoving;
         bool sprinting = moving && movement != null && movement.IsSprinting;
+        bool sweeping = playable != null && playable.role == RoleType.Janitor && Time.time < sweepEndsAt;
 
         string desired = ResolveDesiredState(moving);
 
@@ -103,6 +112,8 @@ public class CharacterAnimationDriver : MonoBehaviour
 
         if (!string.IsNullOrEmpty(desired))
             PlayState(desired, crossFade);
+
+        SetSweepMopVisible(sweeping);
 
         bool locomotion = desired == walkState
             || desired == "JanitorPickupWalk_anim"
@@ -161,6 +172,7 @@ public class CharacterAnimationDriver : MonoBehaviour
         float duration = GetClipLength("JanitorSweeping", sweepDuration);
         sweepEndsAt = Time.time + duration;
         playingPickup = false;
+        EnsureSweepMop(true);
         PlayState("JanitorSweeping", 0.05f);
     }
 
@@ -175,9 +187,130 @@ public class CharacterAnimationDriver : MonoBehaviour
 
         playingPickup = false;
         sweepEndsAt = 0f;
+        SetSweepMopVisible(false);
 
         bool moving = movement != null && movement.AreControlsEnabled() && movement.IsMoving;
         PlayState(moving ? "JanitorPushCart_anim" : "JanitorCartIdle", 0.05f);
+    }
+
+    void SetSweepMopVisible(bool visible)
+    {
+        if (visible)
+            EnsureSweepMop(true);
+        else if (sweepMop == null)
+            return;
+
+        if (sweepMopVisible == visible && sweepMop != null && sweepMop.activeSelf == visible)
+            return;
+
+        if (sweepMop != null)
+            sweepMop.SetActive(visible);
+        sweepMopVisible = visible;
+    }
+
+    void EnsureSweepMop(bool show)
+    {
+        if (sweepMop != null)
+        {
+            sweepMop.SetActive(show);
+            sweepMopVisible = show;
+            return;
+        }
+
+        // Prefer a mop already under this character (e.g. if Janitor2 was used as the body).
+        var existing = FindChildRecursive(transform, SweepMopObjectName);
+        if (existing != null)
+        {
+            sweepMop = existing.gameObject;
+            sweepMop.SetActive(show);
+            sweepMopVisible = show;
+            return;
+        }
+
+        var sourcePrefab = sweepMopSourcePrefab != null ? sweepMopSourcePrefab : LoadSweepMopSource();
+        if (sourcePrefab == null)
+        {
+            Debug.LogWarning("CharacterAnimationDriver: could not load Janitor2_Anims mop source.");
+            return;
+        }
+
+        var temp = Instantiate(sourcePrefab);
+        temp.name = "Janitor2_Anims_MopSource_Temp";
+        temp.SetActive(true);
+
+        var mopTf = FindChildRecursive(temp.transform, SweepMopObjectName);
+        if (mopTf == null)
+        {
+            Debug.LogWarning("CharacterAnimationDriver: Janitor2_Anims has no child named Mop.");
+            Destroy(temp);
+            return;
+        }
+
+        Transform hand = FindChildRecursive(transform, "hand.r")
+            ?? FindChildRecursive(transform, "Hand.R")
+            ?? FindChildRecursive(transform, "mixamorig:RightHand")
+            ?? transform;
+
+        // Keep the mop's pose relative to the source hand when possible.
+        Transform sourceHand = FindChildRecursive(temp.transform, "hand.r")
+            ?? FindChildRecursive(temp.transform, "Hand.R");
+
+        Vector3 localPos = mopTf.localPosition;
+        Quaternion localRot = mopTf.localRotation;
+        Vector3 localScale = mopTf.localScale;
+        if (sourceHand != null)
+        {
+            localPos = sourceHand.InverseTransformPoint(mopTf.position);
+            localRot = Quaternion.Inverse(sourceHand.rotation) * mopTf.rotation;
+            Vector3 handScale = sourceHand.lossyScale;
+            Vector3 mopScale = mopTf.lossyScale;
+            localScale = new Vector3(
+                mopScale.x / Mathf.Max(0.0001f, handScale.x),
+                mopScale.y / Mathf.Max(0.0001f, handScale.y),
+                mopScale.z / Mathf.Max(0.0001f, handScale.z));
+        }
+
+        mopTf.SetParent(hand, false);
+        mopTf.localPosition = localPos;
+        mopTf.localRotation = localRot;
+        mopTf.localScale = localScale;
+        mopTf.name = SweepMopObjectName;
+
+        foreach (var a in mopTf.GetComponentsInChildren<Animator>(true))
+            Destroy(a);
+
+        sweepMop = mopTf.gameObject;
+        sweepMop.SetActive(show);
+        sweepMopVisible = show;
+
+        Destroy(temp);
+    }
+
+    static GameObject LoadSweepMopSource()
+    {
+#if UNITY_EDITOR
+        var fromEditor = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(SweepMopSourcePath);
+        if (fromEditor != null)
+            return fromEditor;
+#endif
+        return Resources.Load<GameObject>("Janitor2_Anims");
+    }
+
+    static Transform FindChildRecursive(Transform root, string name)
+    {
+        if (root == null)
+            return null;
+        if (root.name == name)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            var found = FindChildRecursive(root.GetChild(i), name);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 
     bool HasPickupFinished()
@@ -196,11 +329,16 @@ public class CharacterAnimationDriver : MonoBehaviour
 
         foreach (var clip in animator.runtimeAnimatorController.animationClips)
         {
+            if (clip != null && clip.name.Equals(stateName, System.StringComparison.OrdinalIgnoreCase))
+                return Mathf.Max(0.15f, clip.length);
+        }
+
+        foreach (var clip in animator.runtimeAnimatorController.animationClips)
+        {
             if (clip != null && clip.name.IndexOf(stateName.Replace("_anim", ""), System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return Mathf.Max(0.15f, clip.length);
         }
 
-        // Exact / partial match by common naming
         foreach (var clip in animator.runtimeAnimatorController.animationClips)
         {
             if (clip == null) continue;
