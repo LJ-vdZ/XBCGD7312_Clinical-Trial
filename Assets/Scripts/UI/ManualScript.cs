@@ -31,7 +31,7 @@ public class ManualScript : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.D))
+        if (Input.GetKeyDown(KeyCode.O))
         {
             OpenDictionary();
         }
