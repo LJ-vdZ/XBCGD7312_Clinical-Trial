@@ -237,6 +237,23 @@ public class ManagerStationHub : MonoBehaviour
         RefreshStore();
     }
 
+    /// <summary>Enable/disable a button on ManagerNavPanel by exact child name.</summary>
+    public void SetNavButtonEnabled(string buttonName, bool enabled)
+    {
+        EnsureBuilt();
+
+        if (navPanel == null)
+            return;
+
+        var t = ClinicalUIFactory.FindChild(navPanel.transform, buttonName);
+        if (t == null)
+            return;
+
+        var btn = t.GetComponent<Button>();
+        if (btn != null)
+            btn.interactable = enabled;
+    }
+
     //switch from navigation panel to shift allocation panel
     void OpenShiftAllocation()
     {
@@ -282,6 +299,11 @@ public class ManagerStationHub : MonoBehaviour
     //switch from navigation panel to redirect panel
     void OpenRedirect()
     {
+        if (TutorialMode.IsActive)
+        {
+            return;
+        }
+
         if (navPanel != null)
         {
             navPanel.SetActive(false);

@@ -339,6 +339,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 483949006724910638, guid: 09a28e3c2ce0ea54582ed318427ec925, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.0263
+      objectReference: {fileID: 0}
+    - target: {fileID: 483949006724910638, guid: 09a28e3c2ce0ea54582ed318427ec925, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.9825
+      objectReference: {fileID: 0}
+    - target: {fileID: 1811083257445201357, guid: 09a28e3c2ce0ea54582ed318427ec925, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3.93
+      objectReference: {fileID: 0}
     - target: {fileID: 8301860381005689885, guid: 09a28e3c2ce0ea54582ed318427ec925, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0
@@ -20271,11 +20283,11 @@ RectTransform:
   - {fileID: 881000448}
   m_Father: {fileID: 881000002}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 627.2, y: 403.2}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: -24.988586, y: 86}
+  m_SizeDelta: {x: 1208.6841, y: 287.8388}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &881000441
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20348,8 +20360,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 44.8}
-  m_SizeDelta: {x: 560, y: 246.4}
+  m_AnchoredPosition: {x: -6.8153, y: 3.1522064}
+  m_SizeDelta: {x: 1146.0978, y: 211.5673}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &881000445
 MonoBehaviour:
@@ -20398,8 +20410,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 22
-  m_fontSizeBase: 22
+  m_fontSize: 30
+  m_fontSizeBase: 30
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -20487,7 +20499,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -156.8}
+  m_AnchoredPosition: {x: 0, y: -187}
   m_SizeDelta: {x: 224, y: 49.28}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &881000449
@@ -22164,9 +22176,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74f3776e25e3bcb4683a5879e6d00580, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HospitalStatsManager
-  sanitation: 100
-  comfort: 100
-  morale: 100
+  sanitation: 50
+  comfort: 50
+  morale: 50
   money: 1000
   NegativeMoneyLimit: -500
   NegativeMoneyTimeLimit: 300
@@ -23056,7 +23068,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.6865081
+      value: -52.13
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalPosition.y
@@ -23064,7 +23076,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -9.540367
+      value: -10.91
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalRotation.w
@@ -24519,6 +24531,7 @@ GameObject:
   - component: {fileID: 1229382767}
   - component: {fileID: 1229382781}
   - component: {fileID: 1229382782}
+  - component: {fileID: 1229382783}
   m_Layer: 0
   m_Name: FeatureBootstrap
   m_TagString: Untagged
@@ -24702,7 +24715,7 @@ MonoBehaviour:
   medBottle1Prefab: {fileID: 0}
   medBottle2Prefab: {fileID: 0}
   pillBoxPrefab: {fileID: 0}
-  medicineCount: 6
+  medicineCount: 0
   maxMedicineCount: 24
 --- !u!114 &1229382779
 MonoBehaviour:
@@ -24720,6 +24733,7 @@ MonoBehaviour:
   characters: []
   selectionPanel: {fileID: 0}
   buttonContainer: {fileID: 0}
+  allowOpenPanel: 1
 --- !u!4 &1229382780
 Transform:
   m_ObjectHideFlags: 0
@@ -24759,6 +24773,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc044cf62a1c1b84f9d4ff8adf422105, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PowerOutagePanel
+--- !u!114 &1229382783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1229382766}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2e8d7c6b5a4938271605f4e3d2c1b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialManager
+  welcomeDialogue: {fileID: 11400000, guid: 4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f90, type: 2}
+  afterMedicineDialogue: {fileID: 11400000, guid: 5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012, type: 2}
+  managerRoomName: TutRoom1_manager
+  nurseRoomName: TutRoom2_nurse
+  fadeSeconds: 0.6
 --- !u!1 &1241094807
 GameObject:
   m_ObjectHideFlags: 0
@@ -29188,6 +29219,55 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 197531147511214817, guid: 4bba9238c9517a846bc7e761fd2a7d0a, type: 3}
   m_PrefabInstance: {fileID: 1998152829}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1757629474
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1757629476}
+  - component: {fileID: 1757629475}
+  m_Layer: 0
+  m_Name: DialogueManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1757629475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1757629474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c9ecb737595cfc4e908a7642433b43f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueManager
+  dialogue: {fileID: 0}
+  dialoguePanel: {fileID: 881000439}
+  dialogueField: {fileID: 881000445}
+  Btnnext: {fileID: 881000450}
+  Btngate: {fileID: 0}
+--- !u!4 &1757629476
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1757629474}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -281.2808, y: 12.28513, z: -46.22551}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1789774983
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -32387,7 +32467,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.77136236
+      value: 54.08
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalPosition.y
@@ -32395,7 +32475,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -9.540367
+      value: -8.53
       objectReference: {fileID: 0}
     - target: {fileID: 3605178057975734614, guid: 41ae94c655d783f43b4ca6c0062f3764, type: 3}
       propertyPath: m_LocalRotation.w
@@ -32714,3 +32794,4 @@ SceneRoots:
   - {fileID: 550878142}
   - {fileID: 1587524887}
   - {fileID: 525906769}
+  - {fileID: 1757629476}

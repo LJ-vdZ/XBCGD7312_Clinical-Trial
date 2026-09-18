@@ -148,6 +148,14 @@ public class PatientCareSystem : MonoBehaviour
             return a.GetInstanceID().CompareTo(b.GetInstanceID());
         });
 
+        // Tutorial keeps a small ward: 3 patients out of capacity 10.
+        if (TutorialMode.IsActive && roots.Count > 3)
+        {
+            for (int i = 3; i < roots.Count; i++)
+                DisableExtraTutorialPatient(roots[i].gameObject);
+            roots.RemoveRange(3, roots.Count - 3);
+        }
+
         for (int i = 0; i < roots.Count; i++)
         {
             var t = roots[i];
@@ -171,6 +179,26 @@ public class PatientCareSystem : MonoBehaviour
 
         incomingPatients = 0;
         Debug.Log($"PatientCareSystem: bound {patients.Count} scene patient(s).");
+    }
+
+    static void DisableExtraTutorialPatient(GameObject go)
+    {
+        if (go == null) return;
+
+        foreach (var station in go.GetComponentsInChildren<PatientDiagnosisStation>(true))
+        {
+            if (station != null) station.enabled = false;
+        }
+
+        foreach (var trigger in go.GetComponentsInChildren<InteractableTrigger>(true))
+        {
+            if (trigger != null) trigger.enabled = false;
+        }
+
+        foreach (var pi in go.GetComponentsInChildren<PatientInteractable>(true))
+        {
+            if (pi != null) pi.enabled = false;
+        }
     }
 
     static bool IsPatientWorldObject(Transform t)

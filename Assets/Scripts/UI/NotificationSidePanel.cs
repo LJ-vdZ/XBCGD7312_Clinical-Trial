@@ -42,6 +42,15 @@ public class NotificationSidePanel : MonoBehaviour
     void Start()
     {
         BindScenePanel();
+
+        if (TutorialMode.IsActive)
+        {
+            if (root != null)
+                root.SetActive(false);
+            enabled = false;
+            return;
+        }
+
         ScheduleNext();
         Invoke(nameof(FireTooFullOnce), 25f);
     }
@@ -241,6 +250,9 @@ public class NotificationSidePanel : MonoBehaviour
 
     public void ShowRaw(string message, string heading = "Hospital Alert")
     {
+        if (TutorialMode.IsActive)
+            return;
+
         if (root == null) BindScenePanel();
 
         if (isDisplaying)

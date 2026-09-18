@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b585d5e4463127f438b6b2c620f02608, type: 3}
+  m_Name: Tut_WelcomeManager
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
+  dialogue:
+  - type: 0
+    dialogueText: Welcome to Clinical Trial!
+  - type: 0
+    dialogueText: "Here you will experience the challenges and pressures of running
+      an understaffed and under-resourced clinic through various roles and how they
+      impact each other. \nLets start off with the Manager!"
+  - type: 0
+    dialogueText: The Manager can buy medicine when its running low or gets stolen.
+      Click "E" to interact with the manager desk and purchase some medicine for
+      the clinic.

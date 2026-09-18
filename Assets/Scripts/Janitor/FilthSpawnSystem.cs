@@ -43,6 +43,12 @@ public class FilthSpawnSystem : MonoBehaviour
 
     void Start()
     {
+        if (TutorialMode.IsActive)
+        {
+            enabled = false;
+            return;
+        }
+
         LoadPrefabsIfNeeded();
         CollectSpawnPoints();
         timer = 2f;

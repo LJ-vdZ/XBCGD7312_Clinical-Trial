@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/DrScene.unity
     guid: 732eaba7460d85e49bafe183f874b232
+  - enabled: 1
+    path: Assets/Scenes/TutorialScene.unity
+    guid: 4d2832d304758644b823a3a2e5e89acb
   - enabled: 0
     path: Assets/Scenes/NurseScene.unity
     guid: 3b6e887b3b83c774ebe116f205f1066d

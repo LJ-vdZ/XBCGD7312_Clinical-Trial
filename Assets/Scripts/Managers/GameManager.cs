@@ -48,7 +48,9 @@ public class GameManager : MonoBehaviour
 
         ResetRoleTimer();
 
-        ScheduleNextOutage();
+        // Tutorial has no power outages.
+        if (!TutorialMode.IsActive)
+            ScheduleNextOutage();
     }
 
     void OnDestroy()
@@ -67,6 +69,11 @@ public class GameManager : MonoBehaviour
 
     void HandleRoleTimer()
     {
+        if (TutorialMode.IsActive)
+        {
+            return;
+        }
+
         if (!canPerformTasks)
         {
             return;

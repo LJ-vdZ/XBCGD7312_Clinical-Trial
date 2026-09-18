@@ -39,6 +39,7 @@ public class MedicineSupplyManager : MonoBehaviour
     public int maxMedicineCount = 24;
 
     public static System.Action OnSupplyChanged;
+    public static System.Action OnBoxPurchased;
 
     readonly List<GameObject> shelfMedicines = new List<GameObject>();
 
@@ -117,6 +118,7 @@ public class MedicineSupplyManager : MonoBehaviour
         if (AudioManager.Instance != null)
             AudioManager.Instance.Play("purchase");
         OnSupplyChanged?.Invoke();
+        OnBoxPurchased?.Invoke();
         return true;
     }
 
@@ -284,7 +286,7 @@ public class MedicineSupplyManager : MonoBehaviour
             shelfMedicines.RemoveAt(i);
             if (go != null) Destroy(go);
         }
-        medicineCount = 0;
+        // Do not change medicineCount here — usable supply only goes up after the nurse finishes sorting.
         OnSupplyChanged?.Invoke();
     }
 
@@ -292,14 +294,13 @@ public class MedicineSupplyManager : MonoBehaviour
     {
         if (med != null && !shelfMedicines.Contains(med))
             shelfMedicines.Add(med);
-        medicineCount = shelfMedicines.Count;
+        // Shelf props are unsorted stock. Usable medicineCount is added in MedicineOrganizerMinigame.
         OnSupplyChanged?.Invoke();
     }
 
     public void UnregisterShelfMedicine(GameObject med)
     {
         shelfMedicines.Remove(med);
-        medicineCount = shelfMedicines.Count;
         OnSupplyChanged?.Invoke();
     }
 
@@ -314,7 +315,9 @@ public class MedicineSupplyManager : MonoBehaviour
             shelfMedicines.RemoveAt(idx);
             if (go != null) Destroy(go);
         }
-        medicineCount = shelfMedicines.Count;
+
+        // Also remove from usable supply when stock is stolen.
+        medicineCount = Mathf.Max(0, medicineCount - amount);
         OnSupplyChanged?.Invoke();
     }
 

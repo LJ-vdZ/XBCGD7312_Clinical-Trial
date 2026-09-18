@@ -10,6 +10,9 @@ public class RoleTimeManager : MonoBehaviour
 
     public JobSpawner jobSpawner;
 
+    /// <summary>Fires whenever staff minutes are changed in the allocation UI.</summary>
+    public static System.Action OnAllocationChanged;
+
     public void SetAllocation(int nurse, int doctor, int janitor)
     {
         if (nurse + doctor + janitor > totalMinutes)
@@ -23,6 +26,7 @@ public class RoleTimeManager : MonoBehaviour
         janitorMinutes = janitor;
 
         Debug.Log($"Allocated: Nurse {nurse}, Doctor {doctor}, Janitor {janitor}");
+        OnAllocationChanged?.Invoke();
     }
 
     public void ConfirmAllocation()

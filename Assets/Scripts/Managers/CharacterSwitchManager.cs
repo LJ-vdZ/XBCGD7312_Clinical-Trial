@@ -23,6 +23,9 @@ public class CharacterSwitchManager : MonoBehaviour
 
     bool panelOpen;
 
+    /// <summary>When false, pressing P will not open the character select panel.</summary>
+    public bool allowOpenPanel = true;
+
     public PlayableCharacter ActiveCharacter => active;
 
     public RoleType ActiveRole => active != null ? active.role : RoleType.Manager;
@@ -60,7 +63,7 @@ public class CharacterSwitchManager : MonoBehaviour
     void Update()
     {
         //if player presses P, open character select. 
-        if (Input.GetKeyDown(KeyCode.P)) 
+        if (Input.GetKeyDown(KeyCode.P) && allowOpenPanel) 
         {
             TogglePanel();
         }
@@ -600,6 +603,11 @@ public class CharacterSwitchManager : MonoBehaviour
 
     public void OpenPanel()
     {
+        if (!allowOpenPanel)
+        {
+            return;
+        }
+
         if (selectionPanel == null) 
         {
             BuildSelectionUIIfNeeded();
@@ -643,5 +651,43 @@ public class CharacterSwitchManager : MonoBehaviour
             AudioManager.Instance.Play("open");
         }
             
+    }
+
+    public void SetRoleButtonEnabled(string buttonName, bool enabled)
+    {
+        BuildSelectionUIIfNeeded();
+
+        var root = buttonContainer != null ? buttonContainer : selectionPanel != null ? selectionPanel.transform : null;
+        if (root == null)
+            return;
+
+        var t = ClinicalUIFactory.FindChild(root, buttonName);
+        if (t == null)
+            return;
+
+        var btn = t.GetComponent<Button>();
+        if (btn != null)
+            btn.interactable = enabled;
+    }
+
+    /// <summary>Replace the click action for a role button (used by the tutorial fade).</summary>
+    public void BindRoleButtonOverride(string buttonName, System.Action onClick)
+    {
+        BuildSelectionUIIfNeeded();
+
+        var root = buttonContainer != null ? buttonContainer : selectionPanel != null ? selectionPanel.transform : null;
+        if (root == null || onClick == null)
+            return;
+
+        var t = ClinicalUIFactory.FindChild(root, buttonName);
+        if (t == null)
+            return;
+
+        var btn = t.GetComponent<Button>();
+        if (btn == null)
+            return;
+
+        btn.onClick.RemoveAllListeners();
+        btn.onClick.AddListener(() => onClick());
     }
 }

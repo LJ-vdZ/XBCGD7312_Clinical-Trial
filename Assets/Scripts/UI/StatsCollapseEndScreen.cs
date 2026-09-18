@@ -43,6 +43,7 @@ public class StatsCollapseEndScreen : MonoBehaviour
     {
         if (shown) return;
         if (HospitalStatsManager.Instance == null) return;
+        if (TutorialMode.IsActive) return;
 
         if (!HospitalStatsManager.Instance.TryGetCollapsedStat(out string statName))
             return;

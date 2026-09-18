@@ -385,7 +385,7 @@ public class MedicineOrganizerMinigame : MonoBehaviour
             HospitalStatsManager.Instance.ChangeComfort(+10f);
         }
         if (MedicineSupplyManager.Instance != null)
-            MedicineSupplyManager.Instance.AddMedicineCount(4);
+            MedicineSupplyManager.Instance.AddMedicineCount(12);
 
         CharacterMoraleSystem.NotifyOrganizerSuccess();
         ExitMinigame();

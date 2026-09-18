@@ -225,4 +225,24 @@ public class CameraFollow : MonoBehaviour
         }
             
     }
+
+    /// <summary>
+    /// Instantly place the camera behind the current target (no smooth travel).
+    /// </summary>
+    public void SnapToTarget()
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        yaw = target.eulerAngles.y;
+
+        Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
+        Vector3 pivot = target.position + Vector3.up * heightOffset;
+        Vector3 desiredPosition = pivot + rotation * (Vector3.back * distance);
+
+        transform.position = desiredPosition;
+        transform.LookAt(target.position + Vector3.up * 1.8f);
+    }
 }
