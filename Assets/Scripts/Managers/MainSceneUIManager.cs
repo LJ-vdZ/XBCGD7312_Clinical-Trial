@@ -189,6 +189,10 @@ public class MainSceneUIManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            // PauseMenu owns Esc in HospitalHubLevel (resume / open pause).
+            if (PauseMenu.Instance != null)
+                return;
+
             Application.Quit();
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;

@@ -34,8 +34,16 @@ public class MedicineBoxInteractable : MonoBehaviour, IInteractable
         }
 
         if (unpacked || unpacking) return;
-        unpacking = true;
 
+        // Second box waits until sorted stock is used up (shelf empties as medicineCount drops).
+        if (MedicineSupplyManager.Instance != null && MedicineSupplyManager.Instance.ShelfHasMedicines)
+        {
+            if (NotificationSidePanel.Instance != null)
+                NotificationSidePanel.Instance.ShowRaw("Shelf is full. Can't unpack box.");
+            return;
+        }
+
+        unpacking = true;
         StartCoroutine(UnpackRoutine());
     }
 

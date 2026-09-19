@@ -6,8 +6,9 @@ using UnityEditor;
 
 /// <summary>
 /// Tracks medicine box purchases and shelf bottle supply count for Doctor/Nurse treatment UI.
-/// Manager purchase spawns Nurse_MedicineBox at MedBoxSpawnPoint.
+/// Manager purchase spawns Nurse_MedicineBox at MedBoxSpawnPoint / MedBoxSpawnPoint (1), etc.
 /// Nurse unpacks the box (after open anim) to fill MedRow*C* slots with 4 of each med type.
+/// Usable medicineCount only increases after the nurse finishes the sorting mini-game.
 /// </summary>
 public class MedicineSupplyManager : MonoBehaviour
 {
@@ -16,6 +17,7 @@ public class MedicineSupplyManager : MonoBehaviour
     public const int BoxPrice = 500;
     public const string MedBoxSpawnPointName = "MedBoxSpawnPoint";
     public const string MedicineRackName = "MedicineGame_Rack";
+    public const int MedicinesPerSortedBox = 12;
     const string PropsFolder = "Assets/Prefabs/NurseMiniGameProps";
 
     static readonly string[] SlotNames =
@@ -42,6 +44,10 @@ public class MedicineSupplyManager : MonoBehaviour
     public static System.Action OnBoxPurchased;
 
     readonly List<GameObject> shelfMedicines = new List<GameObject>();
+    readonly List<Transform> medBoxSpawnPoints = new List<Transform>();
+
+    /// <summary>True after unpack until the nurse completes sorting (grants supply once).</summary>
+    bool pendingSortReward;
 
     public bool ShelfHasMedicines
     {
@@ -51,6 +57,8 @@ public class MedicineSupplyManager : MonoBehaviour
             return shelfMedicines.Count > 0;
         }
     }
+
+    public bool HasPendingSortReward => pendingSortReward;
 
     void Awake()
     {
@@ -67,12 +75,10 @@ public class MedicineSupplyManager : MonoBehaviour
 
     void AutoFindReferences()
     {
-        if (storageSpawnPoint == null)
-        {
-            var spawnGo = GameObject.Find(MedBoxSpawnPointName);
-            if (spawnGo != null)
-                storageSpawnPoint = spawnGo.transform;
-        }
+        CollectMedBoxSpawnPoints();
+
+        if (storageSpawnPoint == null && medBoxSpawnPoints.Count > 0)
+            storageSpawnPoint = medBoxSpawnPoints[0];
 
         if (medicineRack == null)
         {
@@ -88,6 +94,49 @@ public class MedicineSupplyManager : MonoBehaviour
             medBottle2Prefab = LoadNurseProp("MedBottle2");
         if (pillBoxPrefab == null)
             pillBoxPrefab = LoadNurseProp("PillBox");
+    }
+
+    void CollectMedBoxSpawnPoints()
+    {
+        medBoxSpawnPoints.Clear();
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (t == null) continue;
+            // MedBoxSpawnPoint, MedBoxSpawnPoint (1), …
+            if (t.name == MedBoxSpawnPointName || t.name.StartsWith(MedBoxSpawnPointName + " "))
+                medBoxSpawnPoints.Add(t);
+        }
+
+        medBoxSpawnPoints.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+    }
+
+    Transform FindFreeMedBoxSpawnPoint()
+    {
+        CollectMedBoxSpawnPoints();
+        if (medBoxSpawnPoints.Count == 0)
+            return storageSpawnPoint;
+
+        foreach (var point in medBoxSpawnPoints)
+        {
+            if (point == null) continue;
+            if (!SpawnPointIsOccupied(point))
+                return point;
+        }
+
+        // All occupied — fall back to first point rather than failing the purchase.
+        return medBoxSpawnPoints[0];
+    }
+
+    static bool SpawnPointIsOccupied(Transform point)
+    {
+        if (point == null) return true;
+        for (int i = 0; i < point.childCount; i++)
+        {
+            var child = point.GetChild(i);
+            if (child != null && child.GetComponent<MedicineBoxInteractable>() != null)
+                return true;
+        }
+        return false;
     }
 
     GameObject LoadNurseProp(string prefabName)
@@ -131,7 +180,8 @@ public class MedicineSupplyManager : MonoBehaviour
             return;
         }
 
-        if (storageSpawnPoint == null)
+        Transform spawn = FindFreeMedBoxSpawnPoint();
+        if (spawn == null)
         {
             Debug.LogWarning($"Scene is missing empty GameObject '{MedBoxSpawnPointName}'.");
             return;
@@ -139,9 +189,9 @@ public class MedicineSupplyManager : MonoBehaviour
 
         GameObject box = Instantiate(
             medicineBoxPrefab,
-            storageSpawnPoint.position,
-            storageSpawnPoint.rotation,
-            storageSpawnPoint);
+            spawn.position,
+            spawn.rotation,
+            spawn);
         box.name = "Nurse_MedicineBox";
 
         // Box open anim must wait for Nurse E — keep animators off until then.
@@ -163,11 +213,13 @@ public class MedicineSupplyManager : MonoBehaviour
     /// <summary>
     /// Spawns 4 of each medicine type across MedRow*C* points (shuffled).
     /// Called after the medicine box open animation finishes.
+    /// Does not change medicineCount — that happens in GrantSortedSupplyAfterOrganizer.
     /// </summary>
     public void SpawnMedicinesOnShelfSlots()
     {
         AutoFindReferences();
         ClearShelfMedicines();
+        pendingSortReward = true;
 
         var anchors = ResolveSlotAnchors();
         if (anchors.Count < SlotNames.Length)
@@ -226,6 +278,19 @@ public class MedicineSupplyManager : MonoBehaviour
 
         if (MedicineOrganizerMinigame.Instance != null)
             MedicineOrganizerMinigame.Instance.RebuildSlotsFromShelf();
+    }
+
+    /// <summary>
+    /// Called when the nurse finishes sorting. Grants +12 supply once per unpacked box.
+    /// Sorted medicines stay on the shelf until treatments consume them.
+    /// </summary>
+    public void GrantSortedSupplyAfterOrganizer()
+    {
+        if (!pendingSortReward)
+            return;
+
+        pendingSortReward = false;
+        AddMedicineCount(MedicinesPerSortedBox);
     }
 
     List<Transform> ResolveSlotAnchors()

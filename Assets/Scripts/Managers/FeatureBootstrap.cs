@@ -21,15 +21,19 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterMoraleSystem))]
 [RequireComponent(typeof(FilthSpawnSystem))]
 [RequireComponent(typeof(MedicineSupplyHUD))]
+[RequireComponent(typeof(PauseMenu))]
 
 public class FeatureBootstrap : MonoBehaviour
 {
     /// <summary>Call before SceneManager.LoadScene so UI systems re-init cleanly.</summary>
     public static void PrepareForSceneRestart()
     {
+        Time.timeScale = 1f;
         NewUIRoot.ClearCache();
         ManagerStationHub.Instance = null;
         CharacterSwitchManager.Instance = null;
+        if (PauseMenu.Instance != null)
+            PauseMenu.Instance = null;
     }
 
     void Start()
@@ -64,6 +68,10 @@ public class FeatureBootstrap : MonoBehaviour
         RequireExisting<FilthSpawnSystem>();
 
         RequireExisting<MedicineSupplyHUD>();
+
+        if (GetComponent<PauseMenu>() == null)
+            gameObject.AddComponent<PauseMenu>();
+        RequireExisting<PauseMenu>();
 
         SetupMedicineOrganizerProps();
 

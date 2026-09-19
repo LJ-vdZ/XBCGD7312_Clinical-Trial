@@ -12,6 +12,7 @@ public class CharacterAnimationDriver : MonoBehaviour
 
     [SerializeField] float crossFade = 0.12f;
     [SerializeField] float sprintAnimSpeed = 1.45f;
+    [SerializeField] float actionAnimSpeed = 1.75f;
     [SerializeField] float sweepDuration = 1.35f;
     [SerializeField] float pickupFallbackDuration = 1.1f;
     [SerializeField] GameObject sweepMopSourcePrefab;
@@ -87,12 +88,20 @@ public class CharacterAnimationDriver : MonoBehaviour
 
         bool moving = movement != null && movement.AreControlsEnabled() && movement.IsMoving;
         bool sprinting = moving && movement != null && movement.IsSprinting;
-        bool sweeping = playable != null && playable.role == RoleType.Janitor && Time.time < sweepEndsAt;
+
+        // Walk / sprint always wins over sweep and pickup one-shots.
+        if (moving)
+        {
+            if (Time.time < sweepEndsAt)
+                CancelSweep();
+            if (playingPickup)
+                playingPickup = false;
+        }
 
         string desired = ResolveDesiredState(moving);
 
-        // One-shot pickup: hold until clip finishes, then fall through to hold/walk.
-        if (playingPickup)
+        // One-shot pickup while standing still: hold until clip finishes.
+        if (playingPickup && !moving)
         {
             if (janitor == null || janitor.heldTrash == null)
             {
@@ -110,15 +119,22 @@ public class CharacterAnimationDriver : MonoBehaviour
             }
         }
 
+        bool sweeping = playable != null && playable.role == RoleType.Janitor && Time.time < sweepEndsAt && !moving;
+
+        // Snap faster when interrupting an action into locomotion.
+        float fade = IsActionState(currentState) && IsLocomotionState(desired) ? 0.05f : crossFade;
         if (!string.IsNullOrEmpty(desired))
-            PlayState(desired, crossFade);
+            PlayState(desired, fade);
 
         SetSweepMopVisible(sweeping);
 
-        bool locomotion = desired == walkState
-            || desired == "JanitorPickupWalk_anim"
-            || desired == "JanitorPushCart_anim";
-        animator.speed = (locomotion && sprinting) ? sprintAnimSpeed : 1f;
+        bool locomotion = IsLocomotionState(desired);
+        if (desired == "JanitorSweeping" || desired == "JanitorPickup_anim")
+            animator.speed = actionAnimSpeed;
+        else if (locomotion && sprinting)
+            animator.speed = sprintAnimSpeed;
+        else
+            animator.speed = 1f;
     }
 
     string ResolveDesiredState(bool moving)
@@ -131,7 +147,8 @@ public class CharacterAnimationDriver : MonoBehaviour
 
     string ResolveJanitorState(bool moving)
     {
-        if (Time.time < sweepEndsAt)
+        // Sweep only while idle — movement cancels it in Update.
+        if (!moving && Time.time < sweepEndsAt)
             return "JanitorSweeping";
 
         bool holdingTrash = janitor != null && janitor.heldTrash != null;
@@ -152,6 +169,24 @@ public class CharacterAnimationDriver : MonoBehaviour
         return moving ? walkState : idleState;
     }
 
+    static bool IsActionState(string state)
+    {
+        return state == "JanitorSweeping" || state == "JanitorPickup_anim";
+    }
+
+    bool IsLocomotionState(string state)
+    {
+        return state == walkState
+            || state == "JanitorPickupWalk_anim"
+            || state == "JanitorPushCart_anim";
+    }
+
+    void CancelSweep()
+    {
+        sweepEndsAt = 0f;
+        SetSweepMopVisible(false);
+    }
+
     public void NotifyTrashPickedUp()
     {
         if (playable == null || playable.role != RoleType.Janitor)
@@ -160,7 +195,8 @@ public class CharacterAnimationDriver : MonoBehaviour
             return;
 
         playingPickup = true;
-        pickupEndsAt = Time.time + GetClipLength("JanitorPickup_anim", pickupFallbackDuration);
+        float clipLen = GetClipLength("JanitorPickup_anim", pickupFallbackDuration);
+        pickupEndsAt = Time.time + clipLen / Mathf.Max(0.1f, actionAnimSpeed);
         PlayState("JanitorPickup_anim", 0.05f);
     }
 
@@ -169,7 +205,7 @@ public class CharacterAnimationDriver : MonoBehaviour
         if (playable == null || playable.role != RoleType.Janitor)
             return;
 
-        float duration = GetClipLength("JanitorSweeping", sweepDuration);
+        float duration = GetClipLength("JanitorSweeping", sweepDuration) / Mathf.Max(0.1f, actionAnimSpeed);
         sweepEndsAt = Time.time + duration;
         playingPickup = false;
         EnsureSweepMop(true);

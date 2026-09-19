@@ -74,7 +74,19 @@ public class NotificationSidePanel : MonoBehaviour
 
         title = ClinicalUIFactory.FindLabel(root.transform, "TitleLabel");
         body = ClinicalUIFactory.FindLabel(root.transform, "BodyLabel");
-        ClinicalUIFactory.BindButton(root.transform, "Dismiss (Esc)Button", Dismiss);
+
+        var dismissBtn = ClinicalUIFactory.BindButton(root.transform, "Dismiss (Tab)Button", Dismiss);
+        if (dismissBtn == null)
+            dismissBtn = ClinicalUIFactory.BindButton(root.transform, "Dismiss (Esc)Button", Dismiss);
+
+        if (dismissBtn != null)
+        {
+            dismissBtn.gameObject.name = "Dismiss (Tab)Button";
+            var label = dismissBtn.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null)
+                label.text = "Dismiss (Tab)";
+        }
+
         EnsureTimerUi();
         root.SetActive(false);
     }
@@ -154,6 +166,12 @@ public class NotificationSidePanel : MonoBehaviour
 
     void Update()
     {
+        if (isDisplaying && Input.GetKeyDown(KeyCode.Tab))
+        {
+            Dismiss();
+            return;
+        }
+
         if (isDisplaying)
         {
             displayRemaining -= Time.deltaTime;

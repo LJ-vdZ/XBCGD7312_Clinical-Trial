@@ -395,8 +395,9 @@ public class MedicineOrganizerMinigame : MonoBehaviour
             HospitalStatsManager.Instance.ChangeMorale(+12f);
             HospitalStatsManager.Instance.ChangeComfort(+10f);
         }
+        // Usable supply only increases here (once per unpacked box), not on purchase/unpack.
         if (MedicineSupplyManager.Instance != null)
-            MedicineSupplyManager.Instance.AddMedicineCount(12);
+            MedicineSupplyManager.Instance.GrantSortedSupplyAfterOrganizer();
 
         CharacterMoraleSystem.NotifyOrganizerSuccess();
         OnOrganizerCompleted?.Invoke();

@@ -26,6 +26,9 @@ public class CharacterSwitchManager : MonoBehaviour
     /// <summary>When false, pressing P will not open the character select panel.</summary>
     public bool allowOpenPanel = true;
 
+    /// <summary>True while the P character-select panel is visible.</summary>
+    public bool IsSelectionPanelOpen => panelOpen;
+
     public PlayableCharacter ActiveCharacter => active;
 
     public RoleType ActiveRole => active != null ? active.role : RoleType.Manager;
@@ -67,13 +70,6 @@ public class CharacterSwitchManager : MonoBehaviour
         {
             TogglePanel();
         }
-            
-
-        if (panelOpen && Input.GetKeyDown(KeyCode.Escape)) 
-        {
-            ClosePanel();
-        }
-            
     }
 
     public void TogglePanel()
@@ -538,9 +534,13 @@ public class CharacterSwitchManager : MonoBehaviour
             gameObject.AddComponent<FootstepAudio>();
         }
 
-        if (role == RoleType.Janitor && gameObject.GetComponent<JanitorAbilities>() == null) 
+        if (role == RoleType.Janitor)
         {
-            gameObject.AddComponent<JanitorAbilities>();
+            var abilities = gameObject.GetComponent<JanitorAbilities>();
+            if (abilities == null)
+                abilities = gameObject.AddComponent<JanitorAbilities>();
+            if (abilities != null)
+                abilities.EnsureAttachPoint();
         }
 
         if (gameObject.GetComponent<CharacterAnimationDriver>() == null
