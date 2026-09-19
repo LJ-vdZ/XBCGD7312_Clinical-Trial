@@ -1265,14 +1265,14 @@ RectTransform:
   m_GameObject: {fileID: 787140385}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.45204, y: 0.45204, z: 0.45204}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 113012020}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 745, y: 469}
+  m_AnchoredPosition: {x: 766, y: 469}
   m_SizeDelta: {x: 200, y: 200}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &787140387
@@ -1552,11 +1552,11 @@ MonoBehaviour:
   dictionaryImage: {fileID: 365076096}
   dictionaryPage: {fileID: 113012019}
   dictionaryImages:
-  - {fileID: 21300000, guid: 32702ae602622184f831375b0c86e302, type: 3}
-  - {fileID: 21300000, guid: 3625e0ec4e26bed46bd0e9985fe03b01, type: 3}
-  - {fileID: 21300000, guid: cc51b3a08d6971f46bffbc0d4ac4764a, type: 3}
-  - {fileID: 21300000, guid: 11631529b5a29ab4aa8ee4f73c010479, type: 3}
-  - {fileID: 21300000, guid: 99552652d9f5eaf40ac0c6cc181092e2, type: 3}
+  - {fileID: 21300000, guid: e7e04d899998fb045a784465d534f28a, type: 3}
+  - {fileID: 21300000, guid: b3d00b206bf1e2a42b73bf0cfdc4ba08, type: 3}
+  - {fileID: 21300000, guid: 873c86df8ddfeab4d9e10d53e6e15bc1, type: 3}
+  - {fileID: 21300000, guid: 1b21e1912af053e42b790b123d7f887c, type: 3}
+  - {fileID: 21300000, guid: da10f70506601b64990df53edf153dff, type: 3}
   mainSceneUIManager: {fileID: 0}
 --- !u!1 &1043790780
 GameObject:
