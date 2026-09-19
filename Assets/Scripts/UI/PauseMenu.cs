@@ -3,8 +3,11 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// HospitalHubLevel pause overlay. Esc opens/closes; freezes gameplay via timeScale.
-/// Temporarily hides open gameplay UI (care panels, manager hub, info panels, etc.) and restores on resume.
+/// Pause overlay for HospitalHubLevel and TutorialScene.
+/// Esc opens/closes; freezes gameplay via timeScale.
+/// Hub: Resume / Restart / Home / Quit.
+/// Tutorial: Resume / Home / Quit only.
+/// Temporarily hides open gameplay UI and restores on resume.
 /// </summary>
 public class PauseMenu : MonoBehaviour
 {
@@ -38,6 +41,8 @@ public class PauseMenu : MonoBehaviour
 
     public bool IsPaused => isPaused;
 
+    bool IsTutorialLayout => TutorialMode.IsActive;
+
     void Awake()
     {
         Instance = this;
@@ -60,9 +65,6 @@ public class PauseMenu : MonoBehaviour
 
     void Update()
     {
-        if (TutorialMode.IsActive)
-            return;
-
         if (!Input.GetKeyDown(KeyCode.Escape))
             return;
 
@@ -305,18 +307,26 @@ public class PauseMenu : MonoBehaviour
         dim.color = new Color(0f, 0f, 0f, 0.65f);
         dim.raycastTarget = true;
 
-        panel = ClinicalUIFactory.CreatePanel(root.transform, "PauseMenuPanel", new Vector2(420f, 420f));
+        bool tutorial = IsTutorialLayout;
+        Vector2 panelSize = tutorial ? new Vector2(420f, 340f) : new Vector2(420f, 420f);
+        panel = ClinicalUIFactory.CreatePanel(root.transform, "PauseMenuPanel", panelSize);
         var panelRt = panel.GetComponent<RectTransform>();
         panelRt.anchoredPosition = Vector2.zero;
 
-        ClinicalUIFactory.CreateLabel(panel.transform, "Paused", 36, new Vector2(0f, 150f));
+        float titleY = tutorial ? 110f : 150f;
+        ClinicalUIFactory.CreateLabel(panel.transform, "Paused", 36, new Vector2(0f, titleY));
 
-        float y = 70f;
+        float y = tutorial ? 40f : 70f;
         float step = -70f;
         ClinicalUIFactory.CreateButton(panel.transform, "Resume", Resume, new Vector2(0f, y), new Vector2(300f, 56f));
         y += step;
-        ClinicalUIFactory.CreateButton(panel.transform, "Restart", RestartLevel, new Vector2(0f, y), new Vector2(300f, 56f));
-        y += step;
+
+        if (!tutorial)
+        {
+            ClinicalUIFactory.CreateButton(panel.transform, "Restart", RestartLevel, new Vector2(0f, y), new Vector2(300f, 56f));
+            y += step;
+        }
+
         ClinicalUIFactory.CreateButton(panel.transform, "Home", GoHome, new Vector2(0f, y), new Vector2(300f, 56f));
         y += step;
         ClinicalUIFactory.CreateButton(panel.transform, "Quit", QuitGame, new Vector2(0f, y), new Vector2(300f, 56f));
