@@ -47,6 +47,9 @@ public class PatientCareSystem : MonoBehaviour
     /// <summary>Fired when a doctor successfully recovers a patient.</summary>
     public static Action<PatientRecord> OnDoctorTreated;
 
+    /// <summary>Fired after a patient is redirected (before the record is destroyed).</summary>
+    public static Action<PatientRecord> OnPatientRedirected;
+
     public int capacity = 10;
     public int incomingPatients;
 
@@ -895,6 +898,8 @@ public class PatientCareSystem : MonoBehaviour
 
         bool critical = record.severity == PatientSeverity.Critical;
         string name = record.patientName;
+
+        OnPatientRedirected?.Invoke(record);
 
         patients.Remove(record);
         if (record.worldObject != null)

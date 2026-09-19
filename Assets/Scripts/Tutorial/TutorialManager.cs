@@ -15,6 +15,11 @@ public class TutorialManager : MonoBehaviour
     [Header("Manager dialogue")]
     public DialogueScriptable welcomeDialogue;
     public DialogueScriptable afterMedicineDialogue;
+    public DialogueScriptable managerReturnWelcomeDialogue;
+    public DialogueScriptable managerRedirectTipDialogue;
+    public DialogueScriptable managerRedirectDoneDialogue;
+    public DialogueScriptable managerVisitorTipDialogue;
+    public DialogueScriptable managerTutorialCompleteDialogue;
 
     [Header("Nurse dialogue")]
     public DialogueScriptable nurseWelcomeDialogue;
@@ -47,6 +52,7 @@ public class TutorialManager : MonoBehaviour
 
     [Header("Fade")]
     public float fadeSeconds = 0.6f;
+    public string mainMenuSceneName = "MainMenu";
 
     enum PSwitchTarget
     {
@@ -77,6 +83,15 @@ public class TutorialManager : MonoBehaviour
     bool janitorAfterDisposeShown;
     bool janitorCleanupDone;
     bool janitorToManagerShown;
+    bool managerRedirectPhaseStarted;
+    bool managerReturnWelcomeShown;
+    bool managerRedirectTipShown;
+    bool managerRedirectDoneShown;
+    bool managerVisitorTipShown;
+    bool tutorialComplete;
+    bool waitingForRedirectPanel;
+    bool waitingForNonCriticalRedirect;
+    bool waitingForVisitorDonation;
     bool waitingForCartInteract;
     bool waitingNearRedTrash;
     bool waitingRedTrashPickup;
@@ -117,6 +132,7 @@ public class TutorialManager : MonoBehaviour
         DisableUnwantedSystems();
         SetupDialogueUi();
         SetupFadeOverlay();
+        HideTutorialVisitorUntilManagerReturn();
         PlaceCharacterInRoom(RoleType.Manager, managerRoomName);
 
         StartCoroutine(SetupManagerButtonsNextFrame());
@@ -138,6 +154,9 @@ public class TutorialManager : MonoBehaviour
         JanitorAbilities.OnTrashPickedUp += OnJanitorTrashPickedUp;
         JanitorAbilities.OnTrashDisposed += OnJanitorTrashDisposed;
         DirtPile.OnDirtCleaned += OnJanitorDirtCleaned;
+        ManagerStationHub.OnRedirectPanelOpened += OnRedirectPanelOpened;
+        PatientCareSystem.OnPatientRedirected += OnPatientRedirected;
+        VisitorInteractable.OnDonationAccepted += OnVisitorDonationAccepted;
 
         StartCoroutine(ShowWelcomeNextFrame());
     }
@@ -156,6 +175,9 @@ public class TutorialManager : MonoBehaviour
         JanitorAbilities.OnTrashPickedUp -= OnJanitorTrashPickedUp;
         JanitorAbilities.OnTrashDisposed -= OnJanitorTrashDisposed;
         DirtPile.OnDirtCleaned -= OnJanitorDirtCleaned;
+        ManagerStationHub.OnRedirectPanelOpened -= OnRedirectPanelOpened;
+        PatientCareSystem.OnPatientRedirected -= OnPatientRedirected;
+        VisitorInteractable.OnDonationAccepted -= OnVisitorDonationAccepted;
 
         if (Instance == this)
             Instance = null;
@@ -166,6 +188,9 @@ public class TutorialManager : MonoBehaviour
         // Keep dialogue input locked every frame while a line is up.
         if (dialogueBusy)
             LockPlayer(true);
+        // Keep the mouse free while waiting to click Redirect on a patient.
+        else if (waitingForNonCriticalRedirect || IsManagerStationUiOpen())
+            KeepUiCursorVisible();
 
         TickJanitorTutorial();
 
@@ -410,7 +435,347 @@ public class TutorialManager : MonoBehaviour
     {
         if (switchingRole)
             return;
-        StartCoroutine(FadeSwitchToRole(RoleType.Manager, managerRoomName, null));
+        StartCoroutine(FadeSwitchToRole(RoleType.Manager, managerRoomName, AfterArrivedAsManager));
+    }
+
+    void AfterArrivedAsManager()
+    {
+        // Only the post-janitor return unlocks redirect + the visitor.
+        if (!janitorToManagerShown || managerRedirectPhaseStarted)
+            return;
+
+        managerRedirectPhaseStarted = true;
+        EnsureRedirectTutorialPatients();
+        StartCoroutine(SetupRedirectOnlyButtonsNextFrame());
+        ActivateTutorialVisitor(interactable: false);
+
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+            if (dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(true);
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        if (managerReturnWelcomeDialogue != null)
+        {
+            managerReturnWelcomeShown = true;
+            ShowDialogue(managerReturnWelcomeDialogue, () =>
+            {
+                waitingForRedirectPanel = true;
+            });
+        }
+        else
+        {
+            managerReturnWelcomeShown = true;
+            waitingForRedirectPanel = true;
+            Debug.LogWarning("TutorialManager: managerReturnWelcomeDialogue is not assigned.");
+        }
+    }
+
+    IEnumerator SetupRedirectOnlyButtonsNextFrame()
+    {
+        yield return null;
+        yield return null;
+
+        if (ManagerStationHub.Instance == null)
+            yield break;
+
+        ManagerStationHub.Instance.EnsureBuilt();
+        ManagerStationHub.Instance.SetNavButtonEnabled("Shift AllocationButton", false);
+        ManagerStationHub.Instance.SetNavButtonEnabled("Online StoreButton", false);
+        ManagerStationHub.Instance.SetNavButtonEnabled("Redirect PatientsButton", true);
+    }
+
+    void OnRedirectPanelOpened()
+    {
+        if (!waitingForRedirectPanel || managerRedirectTipShown || dialogueBusy)
+            return;
+
+        waitingForRedirectPanel = false;
+        managerRedirectTipShown = true;
+
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+            if (dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(true);
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        if (managerRedirectTipDialogue != null)
+        {
+            ShowDialogue(managerRedirectTipDialogue, () =>
+            {
+                waitingForNonCriticalRedirect = true;
+            });
+        }
+        else
+        {
+            waitingForNonCriticalRedirect = true;
+            Debug.LogWarning("TutorialManager: managerRedirectTipDialogue is not assigned.");
+        }
+    }
+
+    void OnPatientRedirected(PatientRecord record)
+    {
+        if (!waitingForNonCriticalRedirect || managerRedirectDoneShown || dialogueBusy)
+            return;
+
+        if (record == null || record.severity != PatientSeverity.NotCritical)
+            return;
+
+        waitingForNonCriticalRedirect = false;
+        managerRedirectDoneShown = true;
+        StartCoroutine(ShowRedirectDoneThenVisitorTip());
+    }
+
+    IEnumerator ShowRedirectDoneThenVisitorTip()
+    {
+        while (dialogueBusy)
+            yield return null;
+
+        yield return null;
+
+        if (managerRedirectDoneDialogue != null)
+        {
+            bool doneClosed = false;
+            ShowDialogue(managerRedirectDoneDialogue, () => { doneClosed = true; });
+            while (!doneClosed)
+                yield return null;
+        }
+
+        yield return null;
+
+        if (managerVisitorTipDialogue != null)
+        {
+            bool tipClosed = false;
+            managerVisitorTipShown = true;
+            ShowDialogue(managerVisitorTipDialogue, () => { tipClosed = true; });
+            while (!tipClosed)
+                yield return null;
+        }
+        else
+        {
+            managerVisitorTipShown = true;
+            Debug.LogWarning("TutorialManager: managerVisitorTipDialogue is not assigned.");
+        }
+
+        if (ManagerStationHub.Instance != null)
+            ManagerStationHub.Instance.CloseAll(false);
+
+        // Visitor is visible earlier, but only interactable after a successful redirect.
+        SetTutorialVisitorInteractable(true);
+        waitingForVisitorDonation = true;
+    }
+
+    void OnVisitorDonationAccepted(VisitorInteractable visitor)
+    {
+        if (!waitingForVisitorDonation || tutorialComplete)
+            return;
+
+        waitingForVisitorDonation = false;
+        tutorialComplete = true;
+        StartCoroutine(ShowTutorialCompleteThenMainMenu());
+    }
+
+    IEnumerator ShowTutorialCompleteThenMainMenu()
+    {
+        while (dialogueBusy)
+            yield return null;
+
+        yield return null;
+
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+            if (dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(true);
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        if (managerTutorialCompleteDialogue != null)
+        {
+            bool closed = false;
+            ShowDialogue(managerTutorialCompleteDialogue, () => { closed = true; });
+            while (!closed)
+                yield return null;
+        }
+        else
+        {
+            Debug.LogWarning("TutorialManager: managerTutorialCompleteDialogue is not assigned.");
+        }
+
+        if (dialogueManager != null)
+            dialogueManager.ForceClose();
+
+        if (fadeImage != null)
+            fadeImage.transform.SetAsLastSibling();
+
+        yield return Fade(0f, 1f);
+
+        FeatureBootstrap.PrepareForSceneRestart();
+        UnityEngine.SceneManagement.SceneManager.LoadScene(mainMenuSceneName);
+    }
+
+    /// <summary>
+    /// After nurse/doctor loops, patients may be recovered. Re-seed one Not Critical
+    /// and one Critical tagged patient so Redirect Patients has a clear teaching example.
+    /// </summary>
+    void EnsureRedirectTutorialPatients()
+    {
+        if (PatientCareSystem.Instance == null)
+            return;
+
+        PatientRecord notCritical = null;
+        PatientRecord critical = null;
+
+        foreach (var p in PatientCareSystem.Instance.patients)
+        {
+            if (p == null)
+                continue;
+
+            if (notCritical == null && (p.tutorialNurseTarget || p.severity == PatientSeverity.NotCritical))
+                notCritical = p;
+            else if (critical == null && (p.tutorialDoctorTarget || p.severity == PatientSeverity.Critical))
+                critical = p;
+        }
+
+        if (notCritical == null)
+        {
+            foreach (var p in PatientCareSystem.Instance.patients)
+            {
+                if (p != null)
+                {
+                    notCritical = p;
+                    break;
+                }
+            }
+        }
+
+        if (critical == null)
+        {
+            foreach (var p in PatientCareSystem.Instance.patients)
+            {
+                if (p != null && p != notCritical)
+                {
+                    critical = p;
+                    break;
+                }
+            }
+        }
+
+        PrepareRedirectPatient(notCritical, PatientSeverity.NotCritical);
+        PrepareRedirectPatient(critical, PatientSeverity.Critical);
+    }
+
+    static void PrepareRedirectPatient(PatientRecord record, PatientSeverity severity)
+    {
+        if (record == null)
+            return;
+
+        record.severity = severity;
+        record.severityTagged = true;
+        record.recovered = false;
+        if (record.worldObject != null && !record.worldObject.activeSelf)
+            record.worldObject.SetActive(true);
+    }
+
+    void HideTutorialVisitorUntilManagerReturn()
+    {
+        var visitor = FindNamedObjectIncludingInactive("Male Character (1)");
+        if (visitor != null)
+            visitor.SetActive(false);
+    }
+
+    void ActivateTutorialVisitor(bool interactable)
+    {
+        var visitor = FindNamedObjectIncludingInactive("Male Character (1)");
+        if (visitor == null)
+        {
+            Debug.LogWarning("TutorialManager: could not find 'Male Character (1)' to activate.");
+            return;
+        }
+
+        visitor.SetActive(true);
+
+        var visitorInteractable = visitor.GetComponent<VisitorInteractable>();
+        if (visitorInteractable == null)
+            visitorInteractable = visitor.AddComponent<VisitorInteractable>();
+
+        if (string.IsNullOrWhiteSpace(visitorInteractable.visitorName) || visitorInteractable.visitorName == "Visitor")
+            visitorInteractable.visitorName = "Visitor";
+
+        visitorInteractable.canDonate = true;
+        if (visitorInteractable.donationAmount <= 0)
+            visitorInteractable.donationAmount = 250;
+
+        if (string.IsNullOrWhiteSpace(visitorInteractable.backstory))
+        {
+            visitorInteractable.backstory =
+                "Thank you for taking the time to listen. I'd like to donate to support the hospital.";
+        }
+
+        if (visitor.GetComponent<Collider>() == null)
+        {
+            var col = visitor.AddComponent<CapsuleCollider>();
+            col.isTrigger = true;
+            col.height = 2f;
+        }
+        else
+        {
+            visitor.GetComponent<Collider>().isTrigger = true;
+        }
+
+        if (visitor.GetComponent<InteractableTrigger>() == null)
+            visitor.AddComponent<InteractableTrigger>();
+
+        SetTutorialVisitorInteractable(interactable);
+    }
+
+    void SetTutorialVisitorInteractable(bool enabled)
+    {
+        var visitor = FindNamedObjectIncludingInactive("Male Character (1)");
+        if (visitor == null)
+            return;
+
+        var visitorInteractable = visitor.GetComponent<VisitorInteractable>();
+        if (visitorInteractable != null)
+        {
+            visitorInteractable.enabled = enabled;
+            if (enabled)
+            {
+                // Allow a fresh talk/donation after redirect unlocks this step.
+                visitorInteractable.hasBeenSpokenTo = false;
+                visitorInteractable.donated = false;
+            }
+        }
+
+        var trigger = visitor.GetComponent<InteractableTrigger>();
+        if (trigger != null)
+            trigger.enabled = enabled;
+
+        var prompt = visitor.GetComponent<InteractPrompt>();
+        if (prompt != null)
+            prompt.enabled = enabled;
+    }
+
+    static GameObject FindNamedObjectIncludingInactive(string objectName)
+    {
+        var transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var t in transforms)
+        {
+            if (t != null && t.name == objectName)
+                return t.gameObject;
+        }
+
+        return null;
     }
 
     void OnNurseButtonPressed()
@@ -1062,8 +1427,9 @@ public class TutorialManager : MonoBehaviour
         dialogueManager.Play(data, () =>
         {
             dialogueBusy = false;
-            LockPlayer(false);
+            // Run callbacks first so wait-flags (e.g. redirect) are set before unlock.
             onFinished?.Invoke();
+            LockPlayer(false);
         }, showNextButton);
 
         // Re-assert lock after Play in case another system unlocked this frame.
@@ -1093,8 +1459,20 @@ public class TutorialManager : MonoBehaviour
         // Keep the cursor free during the shelf sorting mini-game.
         bool organizerActive = MedicineOrganizerMinigame.Instance != null
             && MedicineOrganizerMinigame.Instance.IsActive;
-        if (organizerActive)
+
+        // Keep the cursor free while the manager is mid-redirect tutorial
+        // (dialogue continued, station/redirect UI still open, patient not redirected yet).
+        bool managerUiCursor = organizerActive
+            || waitingForNonCriticalRedirect
+            || IsManagerStationUiOpen();
+
+        if (managerUiCursor)
         {
+            if (IsManagerStationUiOpen() && activeChar != null && activeChar.movement != null)
+                activeChar.movement.SetControlsEnabled(false);
+
+            if (cam != null)
+                cam.LockCursor(false);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             return;
@@ -1102,6 +1480,27 @@ public class TutorialManager : MonoBehaviour
 
         if (cam != null)
             cam.LockCursor(true);
+    }
+
+    static bool IsManagerStationUiOpen()
+    {
+        var hub = ManagerStationHub.Instance;
+        if (hub == null)
+            return false;
+
+        return (hub.navPanel != null && hub.navPanel.activeInHierarchy)
+            || (hub.redirectPanel != null && hub.redirectPanel.activeInHierarchy)
+            || (hub.storePanel != null && hub.storePanel.activeInHierarchy);
+    }
+
+    static void KeepUiCursorVisible()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        var cam = FindFirstObjectByType<CameraFollow>();
+        if (cam != null)
+            cam.LockCursor(false);
     }
 
     void PlaceCharacterInRoom(RoleType role, string roomName)

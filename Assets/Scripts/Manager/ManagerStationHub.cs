@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,6 +7,9 @@ public class ManagerStationHub : MonoBehaviour
 {
     //singleton 
     public static ManagerStationHub Instance;
+
+    /// <summary>Fired when the manager opens Redirect Patients from the nav hub.</summary>
+    public static Action OnRedirectPanelOpened;
 
     public MainSceneUIManager mainSceneUIManager;
 
@@ -299,11 +303,6 @@ public class ManagerStationHub : MonoBehaviour
     //switch from navigation panel to redirect panel
     void OpenRedirect()
     {
-        if (TutorialMode.IsActive)
-        {
-            return;
-        }
-
         if (navPanel != null)
         {
             navPanel.SetActive(false);
@@ -315,6 +314,7 @@ public class ManagerStationHub : MonoBehaviour
         }
 
         RebuildRedirectList();
+        OnRedirectPanelOpened?.Invoke();
     }
 
     //check if can purchase medicine box 

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -6,6 +7,9 @@ using UnityEngine;
 /// </summary>
 public class VisitorInteractable : MonoBehaviour, IInteractable
 {
+    /// <summary>Fired when the manager accepts a visitor donation (Continue on a donating visitor).</summary>
+    public static Action<VisitorInteractable> OnDonationAccepted;
+
     [Header("Dialogue (set in Inspector)")]
     [Tooltip("Shown as the visitor's spoken dialogue.")]
     [TextArea(3, 12)]
@@ -134,6 +138,8 @@ public class VisitorInteractable : MonoBehaviour, IInteractable
                 string displayName = string.IsNullOrWhiteSpace(visitorName) ? name : visitorName;
                 NotificationSidePanel.Instance.ShowRaw($"{displayName} donated R{donationAmount} to the hospital.");
             }
+
+            OnDonationAccepted?.Invoke(this);
         }
 
         Close();
