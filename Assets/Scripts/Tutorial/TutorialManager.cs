@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// TutorialScene only — welcome the player, buy medicine, then switch to nurse.
+/// TutorialScene only — manager intro, nurse care loop, then switch to doctor.
 /// Keep this beginner-friendly: one step at a time.
 /// </summary>
 [DefaultExecutionOrder(-50)]
@@ -12,24 +12,50 @@ public class TutorialManager : MonoBehaviour
 {
     public static TutorialManager Instance;
 
-    [Header("Dialogue (DialogueScriptable assets)")]
+    [Header("Manager dialogue")]
     public DialogueScriptable welcomeDialogue;
     public DialogueScriptable afterMedicineDialogue;
+
+    [Header("Nurse dialogue")]
+    public DialogueScriptable nurseWelcomeDialogue;
+    public DialogueScriptable nurseAfterAssessDialogue;
+    public DialogueScriptable nurseAfterBoxDialogue;
+    public DialogueScriptable nurseOrganizerHowToDialogue;
+    public DialogueScriptable nurseAfterOrganizeDialogue;
+    public DialogueScriptable nurseToDoctorDialogue;
 
     [Header("Rooms")]
     public string managerRoomName = "TutRoom1_manager";
     public string nurseRoomName = "TutRoom2_nurse";
+    public string doctorRoomName = "TutRoom3_doctor";
 
     [Header("Fade")]
     public float fadeSeconds = 0.6f;
+
+    enum PSwitchTarget
+    {
+        None,
+        Nurse,
+        Doctor
+    }
 
     DialogueManager dialogueManager;
     GameObject dialoguePanel;
     Image fadeImage;
 
     bool didMedicine;
+    bool nurseIntroShown;
+    bool nurseAfterAssessShown;
+    bool nurseAfterBoxShown;
+    bool nurseOrganizerHowToShown;
+    bool nurseAfterOrganizeShown;
+    bool nurseToDoctorShown;
     bool waitingForPToSwitch;
-    bool switchingToNurse;
+    bool switchingRole;
+    bool dialogueBusy;
+    PSwitchTarget pendingPTarget = PSwitchTarget.None;
+
+    public bool IsDialogueBusy => dialogueBusy;
 
     void Awake()
     {
@@ -50,24 +76,31 @@ public class TutorialManager : MonoBehaviour
         SetupFadeOverlay();
         PlaceCharacterInRoom(RoleType.Manager, managerRoomName);
 
-        // Manager station: Online Store only for this step (redirect stays off).
         StartCoroutine(SetupManagerButtonsNextFrame());
 
-        // Character select locked until the "press P" step.
         if (CharacterSwitchManager.Instance != null)
             CharacterSwitchManager.Instance.allowOpenPanel = false;
 
         StartCoroutine(SetupRoleButtonsNextFrame());
 
         MedicineSupplyManager.OnBoxPurchased += OnMedicinePurchased;
+        PatientCareSystem.OnSeverityTagged += OnSeverityTagged;
+        PatientCareSystem.OnNurseTreated += OnNurseTreated;
+        MedicineBoxInteractable.OnBoxUnpacked += OnMedicineBoxUnpacked;
+        MedicineOrganizerMinigame.OnOrganizerStarted += OnOrganizerStarted;
+        MedicineOrganizerMinigame.OnOrganizerCompleted += OnOrganizerCompleted;
 
-        // Greeting dialogue before the player does anything.
         StartCoroutine(ShowWelcomeNextFrame());
     }
 
     void OnDestroy()
     {
         MedicineSupplyManager.OnBoxPurchased -= OnMedicinePurchased;
+        PatientCareSystem.OnSeverityTagged -= OnSeverityTagged;
+        PatientCareSystem.OnNurseTreated -= OnNurseTreated;
+        MedicineBoxInteractable.OnBoxUnpacked -= OnMedicineBoxUnpacked;
+        MedicineOrganizerMinigame.OnOrganizerStarted -= OnOrganizerStarted;
+        MedicineOrganizerMinigame.OnOrganizerCompleted -= OnOrganizerCompleted;
 
         if (Instance == this)
             Instance = null;
@@ -75,27 +108,32 @@ public class TutorialManager : MonoBehaviour
 
     void Update()
     {
-        if (!waitingForPToSwitch)
+        if (!waitingForPToSwitch || pendingPTarget == PSwitchTarget.None)
             return;
 
-        // Last tutorial line asks the player to press P.
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            waitingForPToSwitch = false;
+        if (!Input.GetKeyDown(KeyCode.P))
+            return;
 
-            if (dialogueManager != null && dialogueManager.IsWaitingForGate)
-                dialogueManager.PassGate(true);
-            else if (dialogueManager != null)
-                dialogueManager.ForceClose();
+        waitingForPToSwitch = false;
+        var target = pendingPTarget;
+        pendingPTarget = PSwitchTarget.None;
 
-            // Wait one frame so CharacterSwitchManager does not also handle this same P press.
-            StartCoroutine(OpenSwitchMenuNextFrame());
-        }
+        if (dialogueManager != null && dialogueManager.IsWaitingForGate)
+            dialogueManager.PassGate(true);
+        else if (dialogueManager != null)
+            dialogueManager.ForceClose();
+
+        // Wait one frame so CharacterSwitchManager does not also handle this same P press.
+        StartCoroutine(OpenSwitchMenuNextFrame(target));
     }
 
-    IEnumerator OpenSwitchMenuNextFrame()
+    IEnumerator OpenSwitchMenuNextFrame(PSwitchTarget target)
     {
-        UnlockNurseSwitch();
+        if (target == PSwitchTarget.Nurse)
+            UnlockRoleSwitch(RoleType.Nurse, OnNurseButtonPressed);
+        else if (target == PSwitchTarget.Doctor)
+            UnlockRoleSwitch(RoleType.Doctor, OnDoctorButtonPressed);
+
         yield return null;
 
         if (CharacterSwitchManager.Instance != null)
@@ -104,7 +142,6 @@ public class TutorialManager : MonoBehaviour
 
     IEnumerator ShowWelcomeNextFrame()
     {
-        // Wait a moment so UI / CharacterSwitchManager finish Start().
         yield return null;
         yield return null;
 
@@ -123,7 +160,6 @@ public class TutorialManager : MonoBehaviour
         stats.morale = 50f;
         HospitalStatsManager.OnStatsChanged?.Invoke();
 
-        // Tutorial starts with no medicine on the shelf.
         if (MedicineSupplyManager.Instance != null)
         {
             MedicineSupplyManager.Instance.medicineCount = 0;
@@ -202,7 +238,6 @@ public class TutorialManager : MonoBehaviour
         if (ManagerStationHub.Instance != null)
         {
             ManagerStationHub.Instance.EnsureBuilt();
-            // Shift allocation not required in this intro step.
             ManagerStationHub.Instance.SetNavButtonEnabled("Shift AllocationButton", false);
             ManagerStationHub.Instance.SetNavButtonEnabled("Online StoreButton", true);
             ManagerStationHub.Instance.SetNavButtonEnabled("Redirect PatientsButton", false);
@@ -234,32 +269,22 @@ public class TutorialManager : MonoBehaviour
 
         didMedicine = true;
 
-        // Close manager hub UI so the dialogue is clear.
         if (ManagerStationHub.Instance != null)
             ManagerStationHub.Instance.CloseAll(false);
 
         if (afterMedicineDialogue != null)
         {
-            ShowDialogue(afterMedicineDialogue, () =>
-            {
-                // If the last line was a Gate, EndDialogue already ran via P.
-                // If somehow finished without gate, still unlock.
-                if (!waitingForPToSwitch)
-                    UnlockNurseSwitch();
-            });
-
-            // After the first two Next presses, the Gate line stays open until P.
-            StartCoroutine(WatchForPressPGate());
+            ShowDialogue(afterMedicineDialogue, null);
+            StartCoroutine(WatchForPressPGate(PSwitchTarget.Nurse));
         }
         else
         {
-            UnlockNurseSwitch();
+            BeginWaitForP(PSwitchTarget.Nurse);
         }
     }
 
-    IEnumerator WatchForPressPGate()
+    IEnumerator WatchForPressPGate(PSwitchTarget target)
     {
-        // Wait until DialogueManager reaches the Gate line ("Click P...").
         while (dialogueManager != null && dialogueManager.dialoguePanel != null
                && dialogueManager.dialoguePanel.activeSelf
                && !dialogueManager.IsWaitingForGate)
@@ -269,24 +294,36 @@ public class TutorialManager : MonoBehaviour
 
         if (dialogueManager != null && dialogueManager.IsWaitingForGate)
         {
-            waitingForPToSwitch = true;
-            // Hide Next on the gate line — player must press P.
+            BeginWaitForP(target);
             if (dialogueManager.Btnnext != null)
                 dialogueManager.Btnnext.gameObject.SetActive(false);
         }
     }
 
-    void UnlockNurseSwitch()
+    void BeginWaitForP(PSwitchTarget target)
+    {
+        pendingPTarget = target;
+        waitingForPToSwitch = true;
+    }
+
+    void UnlockRoleSwitch(RoleType role, Action onPressed)
     {
         if (CharacterSwitchManager.Instance == null)
             return;
 
         CharacterSwitchManager.Instance.allowOpenPanel = true;
-        CharacterSwitchManager.Instance.SetRoleButtonEnabled("ManagerButton", false);
-        CharacterSwitchManager.Instance.SetRoleButtonEnabled("DoctorButton", false);
-        CharacterSwitchManager.Instance.SetRoleButtonEnabled("JanitorButton", false);
-        CharacterSwitchManager.Instance.SetRoleButtonEnabled("NurseButton", true);
-        CharacterSwitchManager.Instance.BindRoleButtonOverride("NurseButton", OnNurseButtonPressed);
+        SetAllRoleButtons(false);
+
+        string buttonName = role switch
+        {
+            RoleType.Nurse => "NurseButton",
+            RoleType.Doctor => "DoctorButton",
+            RoleType.Janitor => "JanitorButton",
+            _ => "ManagerButton"
+        };
+
+        CharacterSwitchManager.Instance.SetRoleButtonEnabled(buttonName, true);
+        CharacterSwitchManager.Instance.BindRoleButtonOverride(buttonName, onPressed);
 
         if (dialogueManager != null && dialogueManager.Btnnext != null)
             dialogueManager.Btnnext.gameObject.SetActive(true);
@@ -294,29 +331,36 @@ public class TutorialManager : MonoBehaviour
 
     void OnNurseButtonPressed()
     {
-        if (switchingToNurse)
+        if (switchingRole)
             return;
-
-        StartCoroutine(FadeSwitchToNurse());
+        StartCoroutine(FadeSwitchToRole(RoleType.Nurse, nurseRoomName, AfterArrivedAsNurse));
     }
 
-    IEnumerator FadeSwitchToNurse()
+    void OnDoctorButtonPressed()
     {
-        switchingToNurse = true;
+        if (switchingRole)
+            return;
+        StartCoroutine(FadeSwitchToRole(RoleType.Doctor, doctorRoomName, null));
+    }
+
+    IEnumerator FadeSwitchToRole(RoleType role, string roomName, Action afterFadeIn)
+    {
+        switchingRole = true;
 
         if (CharacterSwitchManager.Instance != null)
+        {
             CharacterSwitchManager.Instance.ClosePanel();
+            CharacterSwitchManager.Instance.allowOpenPanel = false;
+        }
 
-        // Fully black before any move / role switch.
         yield return Fade(0f, 1f);
 
-        PlaceCharacterInRoom(RoleType.Nurse, nurseRoomName);
+        PlaceCharacterInRoom(role, roomName);
 
-        var nurse = FindCharacter(RoleType.Nurse);
-        if (nurse != null && CharacterSwitchManager.Instance != null)
-            CharacterSwitchManager.Instance.SwitchTo(nurse, playSound: false);
+        var character = FindCharacter(role);
+        if (character != null && CharacterSwitchManager.Instance != null)
+            CharacterSwitchManager.Instance.SwitchTo(character, playSound: false);
 
-        // CameraFollow normally lerps — snap while still black so fade-in is already on the nurse.
         var cam = CharacterSwitchManager.Instance != null
             ? CharacterSwitchManager.Instance.cameraFollow
             : FindFirstObjectByType<CameraFollow>();
@@ -329,7 +373,219 @@ public class TutorialManager : MonoBehaviour
 
         yield return Fade(1f, 0f);
 
-        switchingToNurse = false;
+        switchingRole = false;
+
+        // Show nurse/doctor tutorial UI the moment the screen is visible again.
+        if (afterFadeIn != null)
+            StartCoroutine(RunAfterFadeIn(afterFadeIn));
+    }
+
+    IEnumerator RunAfterFadeIn(Action afterFadeIn)
+    {
+        // One frame so the new role / camera are fully active first.
+        yield return null;
+        afterFadeIn?.Invoke();
+    }
+
+    void AfterArrivedAsNurse()
+    {
+        if (nurseIntroShown)
+            return;
+
+        nurseIntroShown = true;
+
+        // Treat stays locked until medicine has been organised.
+        PatientInteractable.BlockNurseTreat = true;
+
+        // Same lower-third dialogue UI as the manager intro.
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+            if (dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(true);
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        if (nurseWelcomeDialogue != null)
+            ShowDialogue(nurseWelcomeDialogue, null);
+        else
+            Debug.LogWarning("TutorialManager: nurseWelcomeDialogue is not assigned.");
+    }
+
+    void OnSeverityTagged(PatientRecord record)
+    {
+        if (!nurseIntroShown || nurseAfterAssessShown || dialogueBusy)
+            return;
+
+        // Guide to the medicine box after the first assessment.
+        // Keep Treat locked until the organizer is completed.
+        nurseAfterAssessShown = true;
+        PatientInteractable.BlockNurseTreat = true;
+        StartCoroutine(ShowAfterAssessGuided());
+    }
+
+    IEnumerator ShowAfterAssessGuided()
+    {
+        yield return null;
+
+        SetNurseTreatButtonInteractable(false);
+
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        if (nurseAfterAssessDialogue != null)
+            ShowDialogue(nurseAfterAssessDialogue, CloseNurseAssessmentWithDialogue);
+        else
+            CloseNurseAssessmentWithDialogue();
+    }
+
+    void CloseNurseAssessmentWithDialogue()
+    {
+        // Do not unlock Treat here — medicine must be organised first.
+        PatientInteractable.CloseOpenCarePanels();
+    }
+
+    static void SetNurseTreatButtonInteractable(bool enabled)
+    {
+        var panel = ClinicalUIFactory.FindByName("NursePatientCarePanel");
+        if (panel == null)
+            return;
+
+        var treatT = ClinicalUIFactory.FindChild(panel.transform, "TreatButton");
+        if (treatT == null)
+            return;
+
+        var treatButton = treatT.GetComponent<Button>();
+        if (treatButton != null)
+            treatButton.interactable = enabled;
+    }
+
+    void OnMedicineBoxUnpacked()
+    {
+        if (!nurseAfterAssessShown || nurseAfterBoxShown)
+            return;
+
+        nurseAfterBoxShown = true;
+        StartCoroutine(ShowAfterBoxNextFrame());
+    }
+
+    IEnumerator ShowAfterBoxNextFrame()
+    {
+        while (dialogueBusy)
+            yield return null;
+
+        // Let the box unpack / shelf spawn finish before locking the player in dialogue.
+        yield return null;
+        yield return null;
+        if (nurseAfterBoxDialogue != null)
+            ShowDialogue(nurseAfterBoxDialogue, null);
+    }
+
+    void OnOrganizerStarted()
+    {
+        if (!nurseAfterBoxShown || nurseOrganizerHowToShown)
+            return;
+
+        nurseOrganizerHowToShown = true;
+        StartCoroutine(ShowOrganizerHowToNextFrame());
+    }
+
+    IEnumerator ShowOrganizerHowToNextFrame()
+    {
+        // Wait until any prior dialogue has closed, then teach the swap controls.
+        while (dialogueBusy)
+            yield return null;
+
+        yield return null;
+        if (nurseOrganizerHowToDialogue != null)
+            ShowDialogue(nurseOrganizerHowToDialogue, null);
+    }
+
+    void OnOrganizerCompleted()
+    {
+        if (!nurseOrganizerHowToShown || nurseAfterOrganizeShown)
+            return;
+
+        nurseAfterOrganizeShown = true;
+        // Medicine is available — Treat can be used on assessed patients.
+        PatientInteractable.BlockNurseTreat = false;
+        StartCoroutine(ShowAfterOrganizeNextFrame());
+    }
+
+    IEnumerator ShowAfterOrganizeNextFrame()
+    {
+        // Let the minigame exit first so the dialogue is readable.
+        while (dialogueBusy)
+            yield return null;
+
+        yield return null;
+        yield return null;
+        if (nurseAfterOrganizeDialogue != null)
+            ShowDialogue(nurseAfterOrganizeDialogue, null);
+    }
+
+    void OnNurseTreated(PatientRecord record)
+    {
+        if (!nurseAfterOrganizeShown || nurseToDoctorShown)
+            return;
+
+        if (!AllTutorialPatientsTreated())
+            return;
+
+        nurseToDoctorShown = true;
+        StartCoroutine(ShowNurseToDoctorWhenReady());
+    }
+
+    IEnumerator ShowNurseToDoctorWhenReady()
+    {
+        while (dialogueBusy)
+            yield return null;
+
+        yield return null;
+        if (nurseToDoctorDialogue != null)
+        {
+            ShowDialogue(nurseToDoctorDialogue, null);
+            StartCoroutine(WatchForPressPGate(PSwitchTarget.Doctor));
+        }
+        else
+        {
+            BeginWaitForP(PSwitchTarget.Doctor);
+        }
+    }
+
+    bool AllTutorialPatientsTreated()
+    {
+        if (PatientCareSystem.Instance == null)
+            return false;
+
+        int treated = 0;
+        int total = 0;
+        foreach (var p in PatientCareSystem.Instance.patients)
+        {
+            if (p == null || p.worldObject == null) continue;
+            if (!IsTutorialNursePatientObject(p.worldObject))
+                continue;
+
+            total++;
+            if (p.treatedByNurse || p.recovered)
+                treated++;
+        }
+
+        return total > 0 && treated >= total;
+    }
+
+    static bool IsTutorialNursePatientObject(GameObject go)
+    {
+        if (go == null) return false;
+        string n = go.name;
+        return n.Equals("NursePatient1", System.StringComparison.OrdinalIgnoreCase)
+            || n.Equals("NursePatient2", System.StringComparison.OrdinalIgnoreCase);
     }
 
     IEnumerator Fade(float from, float to)
@@ -359,9 +615,11 @@ public class TutorialManager : MonoBehaviour
             return;
         }
 
+        dialogueBusy = true;
         LockPlayer(true);
         dialogueManager.Play(data, () =>
         {
+            dialogueBusy = false;
             LockPlayer(false);
             onFinished?.Invoke();
         });
@@ -369,22 +627,36 @@ public class TutorialManager : MonoBehaviour
 
     void LockPlayer(bool freeze)
     {
-        var active = CharacterSwitchManager.Instance != null
+        var activeChar = CharacterSwitchManager.Instance != null
             ? CharacterSwitchManager.Instance.ActiveCharacter
             : null;
 
-        if (active != null && active.movement != null)
-            active.movement.SetControlsEnabled(!freeze);
+        if (activeChar != null && activeChar.movement != null)
+            activeChar.movement.SetControlsEnabled(!freeze);
 
         var cam = FindFirstObjectByType<CameraFollow>();
-        if (cam != null)
-            cam.LockCursor(!freeze);
 
         if (freeze)
         {
+            if (cam != null)
+                cam.LockCursor(false);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            return;
         }
+
+        // Keep the cursor free during the shelf sorting mini-game.
+        bool organizerActive = MedicineOrganizerMinigame.Instance != null
+            && MedicineOrganizerMinigame.Instance.IsActive;
+        if (organizerActive)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
+        if (cam != null)
+            cam.LockCursor(true);
     }
 
     void PlaceCharacterInRoom(RoleType role, string roomName)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -34,6 +35,12 @@ public class PatientRecord
 public class PatientCareSystem : MonoBehaviour
 {
     public static PatientCareSystem Instance;
+
+    /// <summary>Fired when a nurse tags Critical / Not Critical.</summary>
+    public static Action<PatientRecord> OnSeverityTagged;
+
+    /// <summary>Fired after a nurse treatment attempt (success or send-to-doctor).</summary>
+    public static Action<PatientRecord> OnNurseTreated;
 
     public int capacity = 10;
     public int incomingPatients;
@@ -148,12 +155,21 @@ public class PatientCareSystem : MonoBehaviour
             return a.GetInstanceID().CompareTo(b.GetInstanceID());
         });
 
-        // Tutorial keeps a small ward: 3 patients out of capacity 10.
-        if (TutorialMode.IsActive && roots.Count > 3)
+        // Tutorial ward: only NursePatient1 / NursePatient2 are interactive care targets.
+        if (TutorialMode.IsActive)
         {
-            for (int i = 3; i < roots.Count; i++)
-                DisableExtraTutorialPatient(roots[i].gameObject);
-            roots.RemoveRange(3, roots.Count - 3);
+            var tutorialRoots = new List<Transform>();
+            for (int i = 0; i < roots.Count; i++)
+            {
+                var t = roots[i];
+                if (IsTutorialNursePatient(t))
+                    tutorialRoots.Add(t);
+                else
+                    DisableExtraTutorialPatient(t.gameObject);
+            }
+
+            tutorialRoots.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+            roots = tutorialRoots;
         }
 
         for (int i = 0; i < roots.Count; i++)
@@ -179,6 +195,14 @@ public class PatientCareSystem : MonoBehaviour
 
         incomingPatients = 0;
         Debug.Log($"PatientCareSystem: bound {patients.Count} scene patient(s).");
+    }
+
+    static bool IsTutorialNursePatient(Transform t)
+    {
+        if (t == null) return false;
+        string n = t.name;
+        return n.Equals("NursePatient1", System.StringComparison.OrdinalIgnoreCase)
+            || n.Equals("NursePatient2", System.StringComparison.OrdinalIgnoreCase);
     }
 
     static void DisableExtraTutorialPatient(GameObject go)
@@ -501,10 +525,10 @@ public class PatientCareSystem : MonoBehaviour
     {
         for (int i = 0; i < amount; i++)
         {
-            var diagnosisCase = PickCase(Random.Range(0, DiagnosisCases.Length));
+            var diagnosisCase = PickCase(UnityEngine.Random.Range(0, DiagnosisCases.Length));
             patients.Add(new PatientRecord
             {
-                patientName = NamePool[Random.Range(0, NamePool.Length)] + " N" + patients.Count,
+                patientName = NamePool[UnityEngine.Random.Range(0, NamePool.Length)] + " N" + patients.Count,
                 symptoms = diagnosisCase.symptoms,
                 correctDiagnosis = diagnosisCase.diagnosis,
                 severity = PatientSeverity.NotCritical,
@@ -544,7 +568,7 @@ public class PatientCareSystem : MonoBehaviour
         }
 
         record.treatedByNurse = true;
-        bool recovered = Random.value < 0.5f;
+        bool recovered = UnityEngine.Random.value < 0.5f;
 
         if (recovered)
         {
@@ -574,6 +598,7 @@ public class PatientCareSystem : MonoBehaviour
 
         RefreshStatusLabel(record);
         UpdateCapacityUI();
+        OnNurseTreated?.Invoke(record);
     }
 
     public void DoctorTreat(PatientRecord record, bool consumeMedicine = true)
@@ -654,6 +679,7 @@ public class PatientCareSystem : MonoBehaviour
         record.severity = severity;
         record.severityTagged = true;
         RefreshStatusLabel(record);
+        OnSeverityTagged?.Invoke(record);
         if (NotificationSidePanel.Instance != null)
             NotificationSidePanel.Instance.ShowRaw($"{record.patientName} tagged: {record.SeverityLabel}.");
     }
@@ -664,6 +690,7 @@ public class PatientCareSystem : MonoBehaviour
         record.severity = severity;
         record.severityTagged = true;
         RefreshStatusLabel(record);
+        OnSeverityTagged?.Invoke(record);
         if (NotificationSidePanel.Instance != null)
             NotificationSidePanel.Instance.ShowRaw($"{record.patientName} tagged: {record.SeverityLabel}.");
     }
@@ -688,7 +715,7 @@ public class PatientCareSystem : MonoBehaviour
 
         patients.Remove(record);
         if (record.worldObject != null)
-            Object.Destroy(record.worldObject);
+            UnityEngine.Object.Destroy(record.worldObject);
 
         if (critical)
         {
@@ -737,6 +764,9 @@ public class PatientInteractable : MonoBehaviour, IInteractable
     static bool nurseUiBound;
     static bool doctorUiBound;
     static PatientInteractable activeCareUi;
+
+    /// <summary>Tutorial: keep Treat disabled while post-assess dialogue is up.</summary>
+    public static bool BlockNurseTreat;
 
     public static void CloseOpenCarePanels()
     {
@@ -988,6 +1018,7 @@ public class PatientInteractable : MonoBehaviour, IInteractable
         {
             var owner = activeCareUi;
             if (owner?.panelRecord == null) return;
+            if (BlockNurseTreat) return;
             if (!owner.panelRecord.severityTagged)
             {
                 if (NotificationSidePanel.Instance != null)
@@ -1053,7 +1084,9 @@ public class PatientInteractable : MonoBehaviour, IInteractable
         {
             var treatButton = treatT.GetComponent<Button>();
             if (treatButton != null)
-                treatButton.interactable = panelRecord.severityTagged && !panelRecord.recovered;
+                treatButton.interactable = !BlockNurseTreat
+                    && panelRecord.severityTagged
+                    && !panelRecord.recovered;
         }
     }
 
@@ -1062,9 +1095,26 @@ public class PatientInteractable : MonoBehaviour, IInteractable
         var active = CharacterSwitchManager.Instance != null
             ? CharacterSwitchManager.Instance.ActiveCharacter
             : null;
+        var cam = FindFirstObjectByType<CameraFollow>();
+
+        // Closing the assessment panel must not steal the cursor while tutorial dialogue is up.
+        bool keepDialogueCursor = !freeze
+            && TutorialManager.Instance != null
+            && TutorialManager.Instance.IsDialogueBusy;
+
+        if (keepDialogueCursor)
+        {
+            if (active?.movement != null)
+                active.movement.SetControlsEnabled(false);
+            if (cam != null)
+                cam.LockCursor(false);
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
         if (active?.movement != null)
             active.movement.SetControlsEnabled(!freeze);
-        var cam = FindFirstObjectByType<CameraFollow>();
         if (cam != null) cam.LockCursor(!freeze);
         Cursor.lockState = freeze ? CursorLockMode.None : CursorLockMode.Locked;
         Cursor.visible = freeze;

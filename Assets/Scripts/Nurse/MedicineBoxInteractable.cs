@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -7,6 +8,8 @@ using UnityEngine;
 /// </summary>
 public class MedicineBoxInteractable : MonoBehaviour, IInteractable
 {
+    public static Action OnBoxUnpacked;
+
     public bool CanInteractWhenLocked => false;
 
     bool unpacked;
@@ -75,6 +78,7 @@ public class MedicineBoxInteractable : MonoBehaviour, IInteractable
 
         unpacked = true;
         unpacking = false;
+        OnBoxUnpacked?.Invoke();
 
         // Box is spent — stop further interaction.
         var trigger = GetComponent<InteractableTrigger>();

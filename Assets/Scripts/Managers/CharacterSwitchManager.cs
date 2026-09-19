@@ -181,7 +181,9 @@ public class CharacterSwitchManager : MonoBehaviour
         return panelName == "NotificationSidePanel"
             || panelName == "PowerOutagePanel"
             || panelName == "EndGameInfoPanel"
-            || panelName == "StatsCollapseEndScreen";
+            || panelName == "StatsCollapseEndScreen"
+            || panelName == "VisitorDialogue"
+            || panelName == "TutorialFade";
     }
 
     static void HideByName(string objectName)

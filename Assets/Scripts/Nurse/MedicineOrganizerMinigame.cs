@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,6 +11,9 @@ using UnityEngine;
 public class MedicineOrganizerMinigame : MonoBehaviour
 {
     public static MedicineOrganizerMinigame Instance;
+
+    public static Action OnOrganizerStarted;
+    public static Action OnOrganizerCompleted;
 
     public enum MedType { Bottle1, Bottle2, PillBox }
 
@@ -29,6 +33,9 @@ public class MedicineOrganizerMinigame : MonoBehaviour
     public Transform firstPersonAnchor;
     public Camera gameplayCamera;
     public Vector3 rackCameraPosition = new Vector3(-88.40164f, 1.127f, -14.525f);
+
+    static readonly Vector3 TutorialRackCameraPosition = new Vector3(-313.3f, 0.71f, -38.88f);
+    static readonly Vector3 TutorialRackCameraEuler = new Vector3(0.271f, 0f, 0f);
 
     [Header("Select / Swap")]
     public float selectLiftHeight = 0.12f;
@@ -50,6 +57,8 @@ public class MedicineOrganizerMinigame : MonoBehaviour
     bool active;
     bool isAnimating;
     GameObject playerRef;
+
+    public bool IsActive => active;
     Vector3 savedCamPos;
     Quaternion savedCamRot;
     Transform savedCamParent;
@@ -192,6 +201,8 @@ public class MedicineOrganizerMinigame : MonoBehaviour
 
         if (MiniGameTimerUI.Instance != null)
             MiniGameTimerUI.Instance.StartTimer("Organize Medicine", 90f, ForceExit);
+
+        OnOrganizerStarted?.Invoke();
     }
 
     public void OnMedicineClicked(MedicineClickable click)
@@ -388,6 +399,7 @@ public class MedicineOrganizerMinigame : MonoBehaviour
             MedicineSupplyManager.Instance.AddMedicineCount(12);
 
         CharacterMoraleSystem.NotifyOrganizerSuccess();
+        OnOrganizerCompleted?.Invoke();
         ExitMinigame();
     }
 
@@ -455,7 +467,13 @@ public class MedicineOrganizerMinigame : MonoBehaviour
             if (go != null) rack = go.transform;
         }
 
-        if (firstPersonAnchor != null)
+        if (TutorialMode.IsActive)
+        {
+            gameplayCamera.transform.SetParent(null);
+            gameplayCamera.transform.position = TutorialRackCameraPosition;
+            gameplayCamera.transform.rotation = Quaternion.Euler(TutorialRackCameraEuler);
+        }
+        else if (firstPersonAnchor != null)
         {
             gameplayCamera.transform.SetParent(null);
             gameplayCamera.transform.position = firstPersonAnchor.position;
