@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: Some patients might still need medical attention after the nurse
-      has tended to them. This is where the Doctor comes in.
+    dialogueText: "Some patients might still need medical attention after the nurse
+      has tended to them. \nThis is where the Doctor comes in."
   - type: 1
     dialogueText: Click "P" to switch to the Doctor

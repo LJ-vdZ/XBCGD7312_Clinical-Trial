@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: Now that the medicine is on the shelf, it needs to be organised.
-      This will increase staff Morale and patient Comfort. Click "E" to interact
-      with the shelf.
+    dialogueText: 'Now that the medicine is on the shelf, it needs to be organised.
+      This will increase staff Morale and patient Comfort.
+
+      Click "E" to interact
+      with the shelf.'

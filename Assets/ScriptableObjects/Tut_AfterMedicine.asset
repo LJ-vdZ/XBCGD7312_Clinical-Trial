@@ -18,7 +18,10 @@ MonoBehaviour:
       Remember to keep an eye on that or you''ll fall into debt. Also keep an eye
       out for when money gets siphoned from the accounts.  '
   - type: 0
-    dialogueText: The the medicine count will increase later, after the Nurse has
-      unpacked and organised it on the shelves. Lets move on to the Nurse next!
+    dialogueText: 'The the medicine count will increase later, after the Nurse has
+      unpacked and organised it on the shelves.
+
+      Lets move on to the Nurse
+      next!'
   - type: 1
     dialogueText: Click "P" to switch to the Nurse

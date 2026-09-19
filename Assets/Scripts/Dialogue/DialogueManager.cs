@@ -16,26 +16,33 @@ public class DialogueManager : MonoBehaviour
     private int currentDialogueIndex = 0;
     private bool waitingForGate = false;
     private Action onFinished;
+    private bool nextButtonBound;
 
     public bool IsWaitingForGate => waitingForGate;
+    public bool IsPlaying => dialoguePanel != null && dialoguePanel.activeSelf;
 
     private void Start()
     {
-        // Make sure the dialogue UI exists and is hooked up.
         EnsureDialogueUI();
         ApplyLowerThirdLayout();
-
-        if (Btnnext != null)
-            Btnnext.onClick.AddListener(NextDialogue);
+        BindNextButton();
 
         if (Btngate != null)
             Btngate.onClick.AddListener(() => PassGate(true));
 
-        // Original behaviour: start if a DialogueScriptable is already assigned.
         if (dialogue != null)
             StartDialogue();
         else if (dialoguePanel != null)
             dialoguePanel.SetActive(false);
+    }
+
+    void BindNextButton()
+    {
+        if (nextButtonBound || Btnnext == null)
+            return;
+
+        Btnnext.onClick.AddListener(NextDialogue);
+        nextButtonBound = true;
     }
 
     /// <summary>
@@ -49,11 +56,28 @@ public class DialogueManager : MonoBehaviour
         if (dialoguePanel == null)
             dialoguePanel = CreateDialoguePanel();
 
-        if (dialogueField == null && dialoguePanel != null)
-            dialogueField = dialoguePanel.GetComponentInChildren<TMP_Text>(true);
+        // Always prefer the BodyLabel under the dialogue panel (not a button label).
+        if (dialoguePanel != null)
+        {
+            var body = dialoguePanel.transform.Find("BodyLabel");
+            if (body != null)
+                dialogueField = body.GetComponent<TMP_Text>();
 
-        if (Btnnext == null && dialoguePanel != null)
-            Btnnext = dialoguePanel.GetComponentInChildren<Button>(true);
+            if (dialogueField == null)
+                dialogueField = ClinicalUIFactory.FindLabel(dialoguePanel.transform, "BodyLabel");
+
+            if (Btnnext == null)
+            {
+                var btnT = dialoguePanel.transform.Find("ContinueButton");
+                if (btnT != null)
+                    Btnnext = btnT.GetComponent<Button>();
+            }
+
+            if (Btnnext == null)
+                Btnnext = dialoguePanel.GetComponentInChildren<Button>(true);
+        }
+
+        BindNextButton();
     }
 
     /// <summary>Places the dialogue box along the bottom of the screen (lower third).</summary>
@@ -70,17 +94,27 @@ public class DialogueManager : MonoBehaviour
         rt.anchorMax = new Vector2(0.5f, 0f);
         rt.pivot = new Vector2(0.5f, 0f);
         rt.anchoredPosition = new Vector2(0f, 36f);
-        rt.sizeDelta = new Vector2(980f, 200f);
+        rt.sizeDelta = new Vector2(980f, 220f);
 
         if (dialogueField != null)
         {
             var textRt = dialogueField.GetComponent<RectTransform>();
             if (textRt != null)
             {
-                textRt.anchorMin = new Vector2(0.04f, 0.28f);
+                textRt.anchorMin = new Vector2(0.04f, 0.32f);
                 textRt.anchorMax = new Vector2(0.96f, 0.94f);
-                textRt.offsetMin = textRt.offsetMax = Vector2.zero;
+                textRt.offsetMin = Vector2.zero;
+                textRt.offsetMax = Vector2.zero;
+                textRt.localScale = Vector3.one;
             }
+
+            dialogueField.gameObject.SetActive(true);
+            dialogueField.enabled = true;
+            dialogueField.fontSize = 26f;
+            dialogueField.enableWordWrapping = true;
+            dialogueField.overflowMode = TextOverflowModes.Overflow;
+            dialogueField.alignment = TextAlignmentOptions.Center;
+            dialogueField.color = Color.white;
         }
 
         if (Btnnext != null)
@@ -111,17 +145,18 @@ public class DialogueManager : MonoBehaviour
         rt.anchorMax = new Vector2(0.5f, 0f);
         rt.pivot = new Vector2(0.5f, 0f);
         rt.anchoredPosition = new Vector2(0f, 36f);
-        rt.sizeDelta = new Vector2(980f, 200f);
+        rt.sizeDelta = new Vector2(980f, 220f);
         panel.GetComponent<Image>().color = new Color(0.12f, 0.18f, 0.22f, 0.94f);
 
         var textGo = new GameObject("BodyLabel", typeof(RectTransform));
         textGo.transform.SetParent(panel.transform, false);
         var text = textGo.AddComponent<TextMeshProUGUI>();
-        text.fontSize = 22f;
+        text.fontSize = 26f;
         text.alignment = TextAlignmentOptions.Center;
         text.color = Color.white;
+        text.enableWordWrapping = true;
         var trt = textGo.GetComponent<RectTransform>();
-        trt.anchorMin = new Vector2(0.04f, 0.28f);
+        trt.anchorMin = new Vector2(0.04f, 0.32f);
         trt.anchorMax = new Vector2(0.96f, 0.94f);
         trt.offsetMin = trt.offsetMax = Vector2.zero;
 
@@ -138,7 +173,7 @@ public class DialogueManager : MonoBehaviour
         var btnLabelGo = new GameObject("Label", typeof(RectTransform));
         btnLabelGo.transform.SetParent(btnGo.transform, false);
         var btnLabel = btnLabelGo.AddComponent<TextMeshProUGUI>();
-        btnLabel.text = "Next";
+        btnLabel.text = "Continue";
         btnLabel.fontSize = 20f;
         btnLabel.alignment = TextAlignmentOptions.Center;
         var blrt = btnLabelGo.GetComponent<RectTransform>();
@@ -146,19 +181,27 @@ public class DialogueManager : MonoBehaviour
         blrt.anchorMax = Vector2.one;
         blrt.offsetMin = blrt.offsetMax = Vector2.zero;
 
+        dialogueField = text;
+        Btnnext = btnGo.GetComponent<Button>();
         return panel;
     }
 
     /// <summary>Play a DialogueScriptable, then run a callback when it finishes.</summary>
-    public void Play(DialogueScriptable data, Action finished = null)
+    public void Play(DialogueScriptable data, Action finished = null, bool showNextButton = true)
     {
         dialogue = data;
         onFinished = finished;
         EnsureDialogueUI();
         ApplyLowerThirdLayout();
+
         if (Btnnext != null)
-            Btnnext.gameObject.SetActive(true);
+            Btnnext.gameObject.SetActive(showNextButton);
+
         StartDialogue();
+
+        // Gate lines never use Continue — hide even if caller forgot.
+        if (IsWaitingForGate && Btnnext != null)
+            Btnnext.gameObject.SetActive(false);
     }
 
     public void StartDialogue()
@@ -175,22 +218,21 @@ public class DialogueManager : MonoBehaviour
         }
 
         if (dialoguePanel != null)
+        {
             dialoguePanel.SetActive(true);
+            dialoguePanel.transform.SetAsLastSibling();
+        }
 
         ShowCurrentDialogue();
     }
 
     public void NextDialogue()
     {
-        // Don't progress while waiting for a gate
         if (waitingForGate)
-        {
             return;
-        }
 
         currentDialogueIndex++;
 
-        // Check if dialogue has finished
         if (dialogue == null || currentDialogueIndex >= dialogue.dialogue.Count)
         {
             EndDialogue();
@@ -202,19 +244,28 @@ public class DialogueManager : MonoBehaviour
 
     private void ShowCurrentDialogue()
     {
+        EnsureDialogueUI();
+
         DialogueScriptable.DialogueEntry currentDialogue =
             dialogue.dialogue[currentDialogueIndex];
 
-        // Show dialogue in the text field
+        string line = currentDialogue.dialogueText ?? "";
+
         if (dialogueField != null)
-            dialogueField.text = currentDialogue.dialogueText;
+        {
+            dialogueField.gameObject.SetActive(true);
+            dialogueField.enabled = true;
+            dialogueField.text = line;
+            dialogueField.ForceMeshUpdate();
+        }
 
-        Debug.Log(currentDialogue.dialogueText);
+        Debug.Log(line);
 
-        // Check if this entry is a gate
         if (currentDialogue.type == DialogueScriptable.DialogueType.Gate)
         {
             waitingForGate = true;
+            if (Btnnext != null)
+                Btnnext.gameObject.SetActive(false);
         }
         else
         {
@@ -224,25 +275,15 @@ public class DialogueManager : MonoBehaviour
 
     public void PassGate(bool completed)
     {
-        // Make sure we are currently waiting for a gate
         if (!waitingForGate)
-        {
             return;
-        }
 
-        // Don't continue if the objective isn't complete
         if (!completed)
-        {
             return;
-        }
 
-        // Gate has been passed
         waitingForGate = false;
-
-        // Continue to the next dialogue
         currentDialogueIndex++;
 
-        // Check if dialogue has finished
         if (dialogue == null || currentDialogueIndex >= dialogue.dialogue.Count)
         {
             EndDialogue();

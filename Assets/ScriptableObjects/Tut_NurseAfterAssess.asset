@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: Once you've made your assessment, you can treat the patient if
+    dialogueText: "Once you've made your assessment, you can treat the patient if
       needed. At the moment, the medicine shelf is empty even though the manager
-      purchased medicine. Find the box and click "E" to open it.
+      made the purchase. \nFind the box and click \"E\" to open and unpack it."

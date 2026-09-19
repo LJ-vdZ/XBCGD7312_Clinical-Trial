@@ -24,10 +24,15 @@ public class TutorialManager : MonoBehaviour
     public DialogueScriptable nurseAfterOrganizeDialogue;
     public DialogueScriptable nurseToDoctorDialogue;
 
+    [Header("Doctor dialogue")]
+    public DialogueScriptable doctorWelcomeDialogue;
+    public DialogueScriptable doctorToJanitorDialogue;
+
     [Header("Rooms")]
     public string managerRoomName = "TutRoom1_manager";
     public string nurseRoomName = "TutRoom2_nurse";
     public string doctorRoomName = "TutRoom3_doctor";
+    public string janitorRoomName = "TutRoom4_janitor";
 
     [Header("Fade")]
     public float fadeSeconds = 0.6f;
@@ -36,7 +41,8 @@ public class TutorialManager : MonoBehaviour
     {
         None,
         Nurse,
-        Doctor
+        Doctor,
+        Janitor
     }
 
     DialogueManager dialogueManager;
@@ -50,6 +56,8 @@ public class TutorialManager : MonoBehaviour
     bool nurseOrganizerHowToShown;
     bool nurseAfterOrganizeShown;
     bool nurseToDoctorShown;
+    bool doctorIntroShown;
+    bool doctorToJanitorShown;
     bool waitingForPToSwitch;
     bool switchingRole;
     bool dialogueBusy;
@@ -86,11 +94,57 @@ public class TutorialManager : MonoBehaviour
         MedicineSupplyManager.OnBoxPurchased += OnMedicinePurchased;
         PatientCareSystem.OnSeverityTagged += OnSeverityTagged;
         PatientCareSystem.OnNurseTreated += OnNurseTreated;
+        PatientCareSystem.OnDoctorTreated += OnDoctorTreated;
         MedicineBoxInteractable.OnBoxUnpacked += OnMedicineBoxUnpacked;
         MedicineOrganizerMinigame.OnOrganizerStarted += OnOrganizerStarted;
         MedicineOrganizerMinigame.OnOrganizerCompleted += OnOrganizerCompleted;
 
         StartCoroutine(ShowWelcomeNextFrame());
+        StartCoroutine(EnsureDialogueAssetsNextFrame());
+    }
+
+    IEnumerator EnsureDialogueAssetsNextFrame()
+    {
+        // Wait for Unity to finish loading ScriptableObject refs from TutorialScene.
+        yield return null;
+        EnsureDoctorToJanitorDialogue();
+    }
+
+    DialogueScriptable EnsureDoctorToJanitorDialogue()
+    {
+        if (doctorToJanitorDialogue != null
+            && doctorToJanitorDialogue.dialogue != null
+            && doctorToJanitorDialogue.dialogue.Count > 0)
+        {
+            return doctorToJanitorDialogue;
+        }
+
+        // Try Resources first (TutorialScene-safe, no other scenes touched).
+        var fromResources = Resources.Load<DialogueScriptable>("Tutorial/Tut_DoctorToJanitor");
+        if (fromResources != null
+            && fromResources.dialogue != null
+            && fromResources.dialogue.Count > 0)
+        {
+            doctorToJanitorDialogue = fromResources;
+            return doctorToJanitorDialogue;
+        }
+
+        // TutorialScene-only fallback if the inspector reference failed to load.
+        var created = ScriptableObject.CreateInstance<DialogueScriptable>();
+        created.name = "Tut_DoctorToJanitor_Runtime";
+        created.dialogue = new System.Collections.Generic.List<DialogueScriptable.DialogueEntry>
+        {
+            new DialogueScriptable.DialogueEntry
+            {
+                type = DialogueScriptable.DialogueType.Gate,
+                dialogueText =
+                    "Patient Comfort and staff Morale went up! Nice work. But with so many patients, " +
+                    "cleanliness becomes crucial to manage as well. Lets switch to the Janitor. Press \"P\" to switch."
+            }
+        };
+        doctorToJanitorDialogue = created;
+        Debug.Log("TutorialManager: created runtime doctorToJanitorDialogue fallback.");
+        return doctorToJanitorDialogue;
     }
 
     void OnDestroy()
@@ -98,6 +152,7 @@ public class TutorialManager : MonoBehaviour
         MedicineSupplyManager.OnBoxPurchased -= OnMedicinePurchased;
         PatientCareSystem.OnSeverityTagged -= OnSeverityTagged;
         PatientCareSystem.OnNurseTreated -= OnNurseTreated;
+        PatientCareSystem.OnDoctorTreated -= OnDoctorTreated;
         MedicineBoxInteractable.OnBoxUnpacked -= OnMedicineBoxUnpacked;
         MedicineOrganizerMinigame.OnOrganizerStarted -= OnOrganizerStarted;
         MedicineOrganizerMinigame.OnOrganizerCompleted -= OnOrganizerCompleted;
@@ -108,6 +163,20 @@ public class TutorialManager : MonoBehaviour
 
     void Update()
     {
+        // Keep dialogue input locked every frame while a line is up.
+        if (dialogueBusy)
+            LockPlayer(true);
+
+        // Fallback: if all doctor patients are done, show janitor handoff even if an event was missed.
+        bool playingAsDoctor = CharacterSwitchManager.Instance != null
+            && CharacterSwitchManager.Instance.ActiveRole == RoleType.Doctor;
+        if ((doctorIntroShown || playingAsDoctor) && !doctorToJanitorShown && AllTutorialDoctorPatientsTreated())
+        {
+            doctorIntroShown = true;
+            doctorToJanitorShown = true;
+            StartCoroutine(ShowDoctorToJanitorWhenReady());
+        }
+
         if (!waitingForPToSwitch || pendingPTarget == PSwitchTarget.None)
             return;
 
@@ -123,6 +192,8 @@ public class TutorialManager : MonoBehaviour
         else if (dialogueManager != null)
             dialogueManager.ForceClose();
 
+        dialogueBusy = false;
+
         // Wait one frame so CharacterSwitchManager does not also handle this same P press.
         StartCoroutine(OpenSwitchMenuNextFrame(target));
     }
@@ -133,6 +204,8 @@ public class TutorialManager : MonoBehaviour
             UnlockRoleSwitch(RoleType.Nurse, OnNurseButtonPressed);
         else if (target == PSwitchTarget.Doctor)
             UnlockRoleSwitch(RoleType.Doctor, OnDoctorButtonPressed);
+        else if (target == PSwitchTarget.Janitor)
+            UnlockRoleSwitch(RoleType.Janitor, OnJanitorButtonPressed);
 
         yield return null;
 
@@ -340,7 +413,14 @@ public class TutorialManager : MonoBehaviour
     {
         if (switchingRole)
             return;
-        StartCoroutine(FadeSwitchToRole(RoleType.Doctor, doctorRoomName, null));
+        StartCoroutine(FadeSwitchToRole(RoleType.Doctor, doctorRoomName, AfterArrivedAsDoctor));
+    }
+
+    void OnJanitorButtonPressed()
+    {
+        if (switchingRole)
+            return;
+        StartCoroutine(FadeSwitchToRole(RoleType.Janitor, janitorRoomName, null));
     }
 
     IEnumerator FadeSwitchToRole(RoleType role, string roomName, Action afterFadeIn)
@@ -412,6 +492,33 @@ public class TutorialManager : MonoBehaviour
             ShowDialogue(nurseWelcomeDialogue, null);
         else
             Debug.LogWarning("TutorialManager: nurseWelcomeDialogue is not assigned.");
+    }
+
+    void AfterArrivedAsDoctor()
+    {
+        if (doctorIntroShown)
+            return;
+
+        doctorIntroShown = true;
+
+        if (PatientCareSystem.Instance != null)
+            PatientCareSystem.Instance.EnableTutorialDoctorPatients();
+
+        // Same lower-third dialogue UI as the manager / nurse intros.
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+            if (dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(true);
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        if (doctorWelcomeDialogue != null)
+            ShowDialogue(doctorWelcomeDialogue, null);
+        else
+            Debug.LogWarning("TutorialManager: doctorWelcomeDialogue is not assigned.");
     }
 
     void OnSeverityTagged(PatientRecord record)
@@ -559,6 +666,59 @@ public class TutorialManager : MonoBehaviour
         }
     }
 
+    void OnDoctorTreated(PatientRecord record)
+    {
+        NotifyDoctorPatientRecovered(record);
+    }
+
+    /// <summary>Called from PatientCareSystem when a doctor recovery completes.</summary>
+    public void NotifyDoctorPatientRecovered(PatientRecord record)
+    {
+        if (doctorToJanitorShown)
+            return;
+
+        doctorIntroShown = true;
+
+        if (!AllTutorialDoctorPatientsTreated())
+        {
+            Debug.Log("TutorialManager: waiting for remaining doctor patients before janitor dialogue.");
+            return;
+        }
+
+        doctorToJanitorShown = true;
+        Debug.Log("TutorialManager: all doctor patients treated — showing janitor handoff dialogue.");
+        StartCoroutine(ShowDoctorToJanitorWhenReady());
+    }
+
+    IEnumerator ShowDoctorToJanitorWhenReady()
+    {
+        PatientInteractable.CloseOpenCarePanels();
+        yield return null;
+        yield return null;
+
+        if (dialogueManager == null)
+            SetupDialogueUi();
+
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+        }
+
+        var handoff = EnsureDoctorToJanitorDialogue();
+        if (handoff == null)
+        {
+            Debug.LogError("TutorialManager: doctorToJanitorDialogue could not be created.");
+            BeginWaitForP(PSwitchTarget.Janitor);
+            yield break;
+        }
+
+        ShowDialogue(handoff, null, showNextButton: false);
+        BeginWaitForP(PSwitchTarget.Janitor);
+        if (dialogueManager != null && dialogueManager.Btnnext != null)
+            dialogueManager.Btnnext.gameObject.SetActive(false);
+    }
+
     bool AllTutorialPatientsTreated()
     {
         if (PatientCareSystem.Instance == null)
@@ -568,8 +728,7 @@ public class TutorialManager : MonoBehaviour
         int total = 0;
         foreach (var p in PatientCareSystem.Instance.patients)
         {
-            if (p == null || p.worldObject == null) continue;
-            if (!IsTutorialNursePatientObject(p.worldObject))
+            if (p == null || !p.tutorialNurseTarget)
                 continue;
 
             total++;
@@ -580,12 +739,12 @@ public class TutorialManager : MonoBehaviour
         return total > 0 && treated >= total;
     }
 
-    static bool IsTutorialNursePatientObject(GameObject go)
+    bool AllTutorialDoctorPatientsTreated()
     {
-        if (go == null) return false;
-        string n = go.name;
-        return n.Equals("NursePatient1", System.StringComparison.OrdinalIgnoreCase)
-            || n.Equals("NursePatient2", System.StringComparison.OrdinalIgnoreCase);
+        if (PatientCareSystem.Instance == null)
+            return false;
+
+        return PatientCareSystem.Instance.AllTutorialDoctorPatientsRecovered();
     }
 
     IEnumerator Fade(float from, float to)
@@ -607,7 +766,7 @@ public class TutorialManager : MonoBehaviour
         fadeImage.raycastTarget = to > 0.01f;
     }
 
-    void ShowDialogue(DialogueScriptable data, Action onFinished)
+    void ShowDialogue(DialogueScriptable data, Action onFinished, bool showNextButton = true)
     {
         if (dialogueManager == null || data == null)
         {
@@ -622,7 +781,10 @@ public class TutorialManager : MonoBehaviour
             dialogueBusy = false;
             LockPlayer(false);
             onFinished?.Invoke();
-        });
+        }, showNextButton);
+
+        // Re-assert lock after Play in case another system unlocked this frame.
+        LockPlayer(true);
     }
 
     void LockPlayer(bool freeze)

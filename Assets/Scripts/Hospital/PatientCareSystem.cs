@@ -20,6 +20,8 @@ public class PatientRecord
     public PatientQueue queue;
     public bool recovered;
     public bool treatedByNurse;
+    public bool tutorialNurseTarget;
+    public bool tutorialDoctorTarget;
     public GameObject worldObject;
     public TextMeshPro statusWorldText;
 
@@ -41,6 +43,9 @@ public class PatientCareSystem : MonoBehaviour
 
     /// <summary>Fired after a nurse treatment attempt (success or send-to-doctor).</summary>
     public static Action<PatientRecord> OnNurseTreated;
+
+    /// <summary>Fired when a doctor successfully recovers a patient.</summary>
+    public static Action<PatientRecord> OnDoctorTreated;
 
     public int capacity = 10;
     public int incomingPatients;
@@ -155,14 +160,19 @@ public class PatientCareSystem : MonoBehaviour
             return a.GetInstanceID().CompareTo(b.GetInstanceID());
         });
 
-        // Tutorial ward: only NursePatient1 / NursePatient2 are interactive care targets.
+        // Tutorial ward: NursePatient1/2 + DoctorPatient1/2/3 (5/10).
+        // Nurse targets stay interactive; doctor targets unlock when the doctor section starts.
         if (TutorialMode.IsActive)
         {
+            EnsureNamedTutorialPatients(roots, claimed,
+                "NursePatient1", "NursePatient2",
+                "DoctorPatient1", "DoctorPatient2", "DoctorPatient3");
+
             var tutorialRoots = new List<Transform>();
             for (int i = 0; i < roots.Count; i++)
             {
                 var t = roots[i];
-                if (IsTutorialNursePatient(t))
+                if (IsTutorialNursePatient(t) || IsTutorialDoctorPatient(t))
                     tutorialRoots.Add(t);
                 else
                     DisableExtraTutorialPatient(t.gameObject);
@@ -176,25 +186,69 @@ public class PatientCareSystem : MonoBehaviour
         {
             var t = roots[i];
             var diagnosisCase = PickCase(i);
+            bool doctorPatient = TutorialMode.IsActive && IsTutorialDoctorPatient(t);
+            bool nursePatient = TutorialMode.IsActive && IsTutorialNursePatient(t);
             var record = new PatientRecord
             {
                 patientName = NamePool[i % NamePool.Length],
                 symptoms = diagnosisCase.symptoms,
                 correctDiagnosis = diagnosisCase.diagnosis,
-                severity = PatientSeverity.NotCritical,
-                severityTagged = false,
+                severity = doctorPatient ? PatientSeverity.Critical : PatientSeverity.NotCritical,
+                severityTagged = doctorPatient,
                 infection = InfectionTag.Unknown,
-                queue = PatientQueue.Nurse,
+                queue = doctorPatient ? PatientQueue.Doctor : PatientQueue.Nurse,
                 recovered = false,
-                treatedByNurse = false,
+                treatedByNurse = doctorPatient,
+                tutorialNurseTarget = nursePatient,
+                tutorialDoctorTarget = doctorPatient,
                 worldObject = t.gameObject
             };
             patients.Add(record);
             WirePatientInteractable(t.gameObject, record);
+
+            // Doctor patients stay locked until the doctor role section begins.
+            if (doctorPatient)
+                DisableExtraTutorialPatient(t.gameObject);
         }
 
         incomingPatients = 0;
-        Debug.Log($"PatientCareSystem: bound {patients.Count} scene patient(s).");
+        int doctorTargets = 0;
+        for (int i = 0; i < patients.Count; i++)
+        {
+            if (patients[i] != null && patients[i].tutorialDoctorTarget)
+                doctorTargets++;
+        }
+        Debug.Log($"PatientCareSystem: bound {patients.Count} scene patient(s), doctorTargets={doctorTargets}.");
+    }
+
+    static void EnsureNamedTutorialPatients(List<Transform> roots, HashSet<Transform> claimed, params string[] names)
+    {
+        for (int i = 0; i < names.Length; i++)
+        {
+            // Include inactive objects — GameObject.Find skips them.
+            var go = FindSceneObjectByName(names[i]);
+            if (go == null) continue;
+            var t = go.transform;
+            if (!claimed.Add(t)) continue;
+            roots.Add(t);
+        }
+    }
+
+    static GameObject FindSceneObjectByName(string objectName)
+    {
+        var all = Resources.FindObjectsOfTypeAll<Transform>();
+        for (int i = 0; i < all.Length; i++)
+        {
+            var t = all[i];
+            if (t == null) continue;
+            if (!string.Equals(t.name, objectName, System.StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (!t.gameObject.scene.IsValid() || !t.gameObject.scene.isLoaded)
+                continue;
+            return t.gameObject;
+        }
+
+        return GameObject.Find(objectName);
     }
 
     static bool IsTutorialNursePatient(Transform t)
@@ -203,6 +257,131 @@ public class PatientCareSystem : MonoBehaviour
         string n = t.name;
         return n.Equals("NursePatient1", System.StringComparison.OrdinalIgnoreCase)
             || n.Equals("NursePatient2", System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    static bool IsTutorialDoctorPatient(Transform t)
+    {
+        if (t == null) return false;
+        string n = t.name;
+        return n.Equals("DoctorPatient1", System.StringComparison.OrdinalIgnoreCase)
+            || n.Equals("DoctorPatient2", System.StringComparison.OrdinalIgnoreCase)
+            || n.Equals("DoctorPatient3", System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsTutorialNursePatientObject(GameObject go)
+    {
+        if (go == null) return false;
+        if (IsTutorialNursePatient(go.transform))
+            return true;
+
+        // Prefer the bound record flag when the interactable sits on a child object.
+        if (Instance != null)
+        {
+            foreach (var p in Instance.patients)
+            {
+                if (p != null && p.tutorialNurseTarget && p.worldObject == go)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool IsTutorialDoctorPatientObject(GameObject go)
+    {
+        if (go == null) return false;
+        if (IsTutorialDoctorPatient(go.transform))
+            return true;
+
+        if (Instance != null)
+        {
+            foreach (var p in Instance.patients)
+            {
+                if (p != null && p.tutorialDoctorTarget && p.worldObject == go)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool AllTutorialDoctorPatientsRecovered()
+    {
+        string[] names = { "DoctorPatient1", "DoctorPatient2", "DoctorPatient3" };
+        int found = 0;
+        int treated = 0;
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            PatientRecord match = null;
+            for (int p = 0; p < patients.Count; p++)
+            {
+                var record = patients[p];
+                if (record?.worldObject == null) continue;
+                if (!string.Equals(record.worldObject.name, names[i], System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+                match = record;
+                break;
+            }
+
+            if (match == null)
+                continue;
+
+            found++;
+            if (match.recovered)
+                treated++;
+        }
+
+        Debug.Log($"Tutorial doctor patients recovered {treated}/{found} (need 3/3)");
+        return found >= 3 && treated >= 3;
+    }
+
+    /// <summary>
+    /// Tutorial: unlock DoctorPatient1/2/3 for the doctor section and lock nurse beds.
+    /// </summary>
+    public void EnableTutorialDoctorPatients()
+    {
+        if (!TutorialMode.IsActive) return;
+
+        foreach (var p in patients)
+        {
+            if (p?.worldObject == null) continue;
+
+            if (IsTutorialDoctorPatient(p.worldObject.transform) || p.tutorialDoctorTarget)
+            {
+                p.tutorialDoctorTarget = true;
+                EnableTutorialPatient(p.worldObject);
+                p.queue = PatientQueue.Doctor;
+                p.severityTagged = true;
+                if (!p.treatedByNurse)
+                    p.treatedByNurse = true;
+                RefreshStatusLabel(p);
+            }
+            else if (IsTutorialNursePatient(p.worldObject.transform) || p.tutorialNurseTarget)
+            {
+                DisableExtraTutorialPatient(p.worldObject);
+            }
+        }
+
+        UpdateCapacityUI();
+        Debug.Log($"PatientCareSystem: enabled tutorial doctor patients. Recovered check ready.");
+    }
+
+    static void EnableTutorialPatient(GameObject go)
+    {
+        if (go == null) return;
+
+        foreach (var pi in go.GetComponentsInChildren<PatientInteractable>(true))
+        {
+            if (pi != null) pi.enabled = true;
+        }
+
+        foreach (var trigger in go.GetComponentsInChildren<InteractableTrigger>(true))
+        {
+            if (trigger == null) continue;
+            trigger.enabled = true;
+            trigger.ForceResolve();
+        }
     }
 
     static void DisableExtraTutorialPatient(GameObject go)
@@ -670,6 +849,10 @@ public class PatientCareSystem : MonoBehaviour
 
         RefreshStatusLabel(record);
         UpdateCapacityUI();
+        OnDoctorTreated?.Invoke(record);
+
+        if (TutorialMode.IsActive && TutorialManager.Instance != null)
+            TutorialManager.Instance.NotifyDoctorPatientRecovered(record);
     }
 
     public void TagPatient(PatientRecord record, InfectionTag infection, PatientSeverity severity)
@@ -826,6 +1009,9 @@ public class PatientInteractable : MonoBehaviour, IInteractable
 
         if (role == RoleType.Nurse)
         {
+            if (TutorialMode.IsActive && (record == null || !record.tutorialNurseTarget))
+                return;
+
             if (MiniGameGate.Instance != null)
                 MiniGameGate.Instance.Unlock(RoleType.Nurse);
 
@@ -833,6 +1019,15 @@ public class PatientInteractable : MonoBehaviour, IInteractable
         }
         else if (role == RoleType.Doctor)
         {
+            if (TutorialMode.IsActive)
+            {
+                bool isDoctorTarget = record != null && (record.tutorialDoctorTarget
+                    || PatientCareSystem.IsTutorialDoctorPatientObject(gameObject)
+                    || (record.worldObject != null && PatientCareSystem.IsTutorialDoctorPatientObject(record.worldObject)));
+                if (!isDoctorTarget)
+                    return;
+            }
+
             if (MiniGameGate.Instance != null)
                 MiniGameGate.Instance.Unlock(RoleType.Doctor);
 
