@@ -9,6 +9,8 @@ public class SceneManager : MonoBehaviour
         BindButton("StartButton", PlayGame);
 
         BindButton("ExitButton", Quit);
+
+        BindButton("TutorialButton", PlayTutorial);
     }
 
     static void BindButton(string objectName, UnityEngine.Events.UnityAction action)
@@ -33,6 +35,11 @@ public class SceneManager : MonoBehaviour
     public void PlayGame()
     {
         UnitySceneManager.LoadScene("HospitalHubLevel");
+    }
+
+    public void PlayTutorial()
+    {
+        UnitySceneManager.LoadScene("TutorialScene");
     }
 
     public void Quit()

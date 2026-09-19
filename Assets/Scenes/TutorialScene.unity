@@ -24878,16 +24878,16 @@ MonoBehaviour:
   doctorRoomName: TutRoom3_doctor
   janitorRoomName: TutRoom4_janitor
   redTrashNearDistance: 3.5
-  fadeSeconds: 0.6
-  hubLevelSceneName: HospitalHubLevel
+  fadeSeconds: 1.2
+  mainMenuSceneName: MainMenu
   ambulanceMusic: {fileID: 8300000, guid: 91a14b0cd6001524a9992d4fce6044da, type: 3}
   ambulanceSource: {fileID: 869220604}
   ambulanceObjectName: Ambulence
-  incomingPatientsHoldSeconds: 2.5
+  incomingPatientsHoldSeconds: 4.5
   ambulanceVolume: 1
   ambulanceGain: 4
-  ambulanceSoftVolume: 0.45
-  ambulanceFadeSeconds: 1.5
+  blackHoldSeconds: 2.5
+  ambulanceFadeSeconds: 2.5
 --- !u!1 &1241094807
 GameObject:
   m_ObjectHideFlags: 0

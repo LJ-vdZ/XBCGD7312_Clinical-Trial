@@ -51,17 +51,19 @@ public class TutorialManager : MonoBehaviour
     public float redTrashNearDistance = 3.5f;
 
     [Header("Fade")]
-    public float fadeSeconds = 0.6f;
-    public string hubLevelSceneName = "HospitalHubLevel";
+    public float fadeSeconds = 1.2f;
+    public string mainMenuSceneName = "MainMenu";
     public AudioClip ambulanceMusic;
     [Tooltip("Scene AudioSource on the Ambulence object — preferred playback for the outro.")]
     public AudioSource ambulanceSource;
     public string ambulanceObjectName = "Ambulence";
-    public float incomingPatientsHoldSeconds = 2.5f;
+    public float incomingPatientsHoldSeconds = 4.5f;
     [Range(0.5f, 1f)] public float ambulanceVolume = 1f;
     [Range(1f, 8f)] public float ambulanceGain = 4f;
-    public float ambulanceSoftVolume = 0.45f;
-    public float ambulanceFadeSeconds = 1.5f;
+    [Tooltip("How long the screen stays fully black before the hub loads.")]
+    public float blackHoldSeconds = 2.0f;
+    [Tooltip("Seconds to fade the ambulance siren down to silence while the screen is black.")]
+    public float ambulanceFadeSeconds = 2.5f;
 
     enum PSwitchTarget
     {
@@ -520,10 +522,9 @@ public class TutorialManager : MonoBehaviour
 
         if (managerRedirectTipDialogue != null)
         {
-            ShowDialogue(managerRedirectTipDialogue, () =>
-            {
-                waitingForNonCriticalRedirect = true;
-            });
+            // Allow a non-critical redirect even while this tip is still on screen.
+            waitingForNonCriticalRedirect = true;
+            ShowDialogue(managerRedirectTipDialogue, null);
         }
         else
         {
@@ -534,7 +535,7 @@ public class TutorialManager : MonoBehaviour
 
     void OnPatientRedirected(PatientRecord record)
     {
-        if (!waitingForNonCriticalRedirect || managerRedirectDoneShown || dialogueBusy)
+        if (!waitingForNonCriticalRedirect || managerRedirectDoneShown)
             return;
 
         if (record == null || record.severity != PatientSeverity.NotCritical)
@@ -547,9 +548,12 @@ public class TutorialManager : MonoBehaviour
 
     IEnumerator ShowRedirectDoneThenVisitorTip()
     {
-        while (dialogueBusy)
-            yield return null;
+        // If the redirect tip is still open, close it so Nice Work can show.
+        if (dialogueBusy && dialogueManager != null)
+            dialogueManager.ForceClose();
 
+        dialogueBusy = false;
+        yield return null;
         yield return null;
 
         if (managerRedirectDoneDialogue != null)
@@ -706,20 +710,23 @@ public class TutorialManager : MonoBehaviour
         if (fadeImage != null)
             fadeImage.transform.SetAsLastSibling();
 
-        // Screen fades while ambulance keeps playing.
+        // Screen goes black while ambulance is still playing.
         yield return Fade(0f, 1f);
 
-        // Then soften the ambulance audio on the Ambulence source.
-        yield return FadeAmbulanceVolume(ambulanceSoftVolume, ambulanceFadeSeconds);
+        // Hold on black while the siren fades all the way out.
+        float blackHold = Mathf.Max(0.5f, blackHoldSeconds);
+        float audioFade = Mathf.Max(0.5f, ambulanceFadeSeconds);
+        StartCoroutine(FadeAmbulanceVolume(0f, audioFade));
+        yield return new WaitForSecondsRealtime(Mathf.Max(blackHold, audioFade));
 
-        yield return new WaitForSecondsRealtime(0.35f);
-
-        // Restore normal hub BGM under the black screen before the scene swap.
-        if (AudioManager.Instance != null && AudioManager.Instance.backgroundMusic != null)
-            AudioManager.Instance.PlayMusic(AudioManager.Instance.backgroundMusic);
+        if (ambulanceSource != null)
+        {
+            ambulanceSource.Stop();
+            ambulanceSource.volume = 0f;
+        }
 
         FeatureBootstrap.PrepareForSceneRestart();
-        UnityEngine.SceneManagement.SceneManager.LoadScene(hubLevelSceneName);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(mainMenuSceneName);
     }
 
     void PlayAmbulanceMusic()
