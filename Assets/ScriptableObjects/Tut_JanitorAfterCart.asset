@@ -10,10 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b585d5e4463127f438b6b2c620f02608, type: 3}
-  m_Name: Tut_DoctorToJanitor
+  m_Name: Tut_JanitorAfterCart
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
-  - type: 1
-    dialogueText: Patient Comfort and staff Morale went up! Nice work. But with so
-      many patients, cleanliness becomes crucial to manage as well. Lets switch to
-      the Janitor. Press "P" to switch.
+  - type: 0
+    dialogueText: Great! Now you can push the cart. Lets push it to the nearest trash
+      bag.

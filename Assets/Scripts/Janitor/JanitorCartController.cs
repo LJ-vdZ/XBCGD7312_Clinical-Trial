@@ -1,9 +1,13 @@
+using System;
 using UnityEngine;
 
 public class JanitorCartController : MonoBehaviour, IInteractable
 {
     //singleton instance
     public static JanitorCartController Instance;
+
+    public static Action OnCartAttached;
+    public static Action OnCartDetached;
 
     public Transform attachToPlayer;
     public Transform mopTransform;
@@ -22,7 +26,7 @@ public class JanitorCartController : MonoBehaviour, IInteractable
 
     Vector3 worldRestPos;
     Quaternion worldRestRot;
-    Vector3 worldRestScale;
+    Vector3 restLocalScale;
     Transform originalParent;
     bool restSaved;
     Transform activeAttachPoint;
@@ -196,7 +200,8 @@ public class JanitorCartController : MonoBehaviour, IInteractable
         {
             worldRestPos = transform.position;
             worldRestRot = transform.rotation;
-            worldRestScale = transform.lossyScale;
+            // Must save localScale (not lossyScale) — Detach restores localScale.
+            restLocalScale = transform.localScale;
 
             originalParent = transform.parent;
 
@@ -207,13 +212,15 @@ public class JanitorCartController : MonoBehaviour, IInteractable
 
         activeAttachPoint = ResolveCartAttachPoint(player);
 
+        // Keep current world size while reparenting, then apply carry pose.
+        Vector3 worldScale = transform.lossyScale;
         transform.SetParent(activeAttachPoint, false);
 
         transform.localPosition = carriedLocalPosition;
         transform.localRotation = Quaternion.Euler(carriedLocalEuler);
 
-        //keep world size when parented to janitor
-        ApplyCounterScale(activeAttachPoint);
+        // Keep the same world size under the janitor attach point.
+        ApplyWorldScale(worldScale);
 
         isCarried = true;
 
@@ -221,6 +228,7 @@ public class JanitorCartController : MonoBehaviour, IInteractable
         if (anim != null)
             anim.NotifyCartAttached();
 
+        OnCartAttached?.Invoke();
         Debug.Log("Cart attached to " + activeAttachPoint.name + ". Press Q to drop");
     }
 
@@ -275,16 +283,15 @@ public class JanitorCartController : MonoBehaviour, IInteractable
         return gameObject.transform;
     }
 
-    //rescales cart to keep world size under parent
-    void ApplyCounterScale(Transform parent)
+    // Sets localScale so lossyScale matches the desired world scale under the current parent.
+    void ApplyWorldScale(Vector3 desiredWorldScale)
     {
-        if (parent == null)
-        {
-            return;
-        }
-
-        Vector3 lossy = parent.lossyScale;
-        transform.localScale = new Vector3( worldRestScale.x / Mathf.Max(0.0001f, lossy.x), worldRestScale.y / Mathf.Max(0.0001f, lossy.y), worldRestScale.z / Mathf.Max(0.0001f, lossy.z));
+        Transform parent = transform.parent;
+        Vector3 parentLossy = parent != null ? parent.lossyScale : Vector3.one;
+        transform.localScale = new Vector3(
+            desiredWorldScale.x / Mathf.Max(0.0001f, parentLossy.x),
+            desiredWorldScale.y / Mathf.Max(0.0001f, parentLossy.y),
+            desiredWorldScale.z / Mathf.Max(0.0001f, parentLossy.z));
     }
 
     //drop cart in current world position
@@ -293,7 +300,6 @@ public class JanitorCartController : MonoBehaviour, IInteractable
         //keep the cart where it is in world
         //do not snap back to original position or rotation it had at game start
         Vector3 dropPos = transform.position;
-
         Quaternion dropRot = transform.rotation;
 
         transform.SetParent(originalParent, true);
@@ -302,14 +308,13 @@ public class JanitorCartController : MonoBehaviour, IInteractable
         transform.rotation = dropRot;
 
         if (restSaved)
-        {
-            transform.localScale = worldRestScale;
-        }
+            transform.localScale = restLocalScale;
 
         isCarried = false;
 
         activeAttachPoint = null;
 
+        OnCartDetached?.Invoke();
     }
 
     void OnDisable()

@@ -10,9 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b585d5e4463127f438b6b2c620f02608, type: 3}
-  m_Name: Tut_NurseAfterOrganize
+  m_Name: Tut_JanitorWelcome
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: "Now that the medicine is organised, you can \nuse it to treat
-      the patients."
+    dialogueText: The Janitor keeps the Sanitation stats up which then increases
+      patient Comfort and as a result, staff Morale.
+  - type: 0
+    dialogueText: "You can pick up trash and throw it in the bins on the cart and
+      sweep/mop filth. \nWalk up to the cart and click \"E\" to interact with it."

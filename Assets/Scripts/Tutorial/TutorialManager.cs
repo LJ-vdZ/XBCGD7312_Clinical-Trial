@@ -28,11 +28,22 @@ public class TutorialManager : MonoBehaviour
     public DialogueScriptable doctorWelcomeDialogue;
     public DialogueScriptable doctorToJanitorDialogue;
 
+    [Header("Janitor dialogue")]
+    public DialogueScriptable janitorWelcomeDialogue;
+    public DialogueScriptable janitorAfterCartDialogue;
+    public DialogueScriptable janitorNearRedTrashDialogue;
+    public DialogueScriptable janitorAfterPickupDialogue;
+    public DialogueScriptable janitorAfterDisposeDialogue;
+    public DialogueScriptable janitorToManagerDialogue;
+
     [Header("Rooms")]
     public string managerRoomName = "TutRoom1_manager";
     public string nurseRoomName = "TutRoom2_nurse";
     public string doctorRoomName = "TutRoom3_doctor";
     public string janitorRoomName = "TutRoom4_janitor";
+
+    [Header("Janitor tutorial")]
+    public float redTrashNearDistance = 3.5f;
 
     [Header("Fade")]
     public float fadeSeconds = 0.6f;
@@ -42,7 +53,8 @@ public class TutorialManager : MonoBehaviour
         None,
         Nurse,
         Doctor,
-        Janitor
+        Janitor,
+        Manager
     }
 
     DialogueManager dialogueManager;
@@ -58,6 +70,29 @@ public class TutorialManager : MonoBehaviour
     bool nurseToDoctorShown;
     bool doctorIntroShown;
     bool doctorToJanitorShown;
+    bool janitorIntroShown;
+    bool janitorAfterCartShown;
+    bool janitorNearRedShown;
+    bool janitorAfterPickupShown;
+    bool janitorAfterDisposeShown;
+    bool janitorCleanupDone;
+    bool janitorToManagerShown;
+    bool waitingForCartInteract;
+    bool waitingNearRedTrash;
+    bool waitingRedTrashPickup;
+    bool waitingTrashDispose;
+    bool waitingJanitorCleanup;
+    bool janitorDroppedCart;
+    bool janitorPickedRedTrash;
+    readonly System.Collections.Generic.HashSet<string> janitorCleanupRemaining =
+        new System.Collections.Generic.HashSet<string>();
+
+    static readonly string[] JanitorCleanupNames =
+    {
+        "SpillOne", "TrashGroup1", "GreenTrash (1)", "Syringe", "SpillThree",
+        "Bandage", "SpillTwo", "BlueTrash", "BoxTwo", "RedTrash"
+    };
+
     bool waitingForPToSwitch;
     bool switchingRole;
     bool dialogueBusy;
@@ -98,53 +133,13 @@ public class TutorialManager : MonoBehaviour
         MedicineBoxInteractable.OnBoxUnpacked += OnMedicineBoxUnpacked;
         MedicineOrganizerMinigame.OnOrganizerStarted += OnOrganizerStarted;
         MedicineOrganizerMinigame.OnOrganizerCompleted += OnOrganizerCompleted;
+        JanitorCartController.OnCartAttached += OnJanitorCartAttached;
+        JanitorCartController.OnCartDetached += OnJanitorCartDetached;
+        JanitorAbilities.OnTrashPickedUp += OnJanitorTrashPickedUp;
+        JanitorAbilities.OnTrashDisposed += OnJanitorTrashDisposed;
+        DirtPile.OnDirtCleaned += OnJanitorDirtCleaned;
 
         StartCoroutine(ShowWelcomeNextFrame());
-        StartCoroutine(EnsureDialogueAssetsNextFrame());
-    }
-
-    IEnumerator EnsureDialogueAssetsNextFrame()
-    {
-        // Wait for Unity to finish loading ScriptableObject refs from TutorialScene.
-        yield return null;
-        EnsureDoctorToJanitorDialogue();
-    }
-
-    DialogueScriptable EnsureDoctorToJanitorDialogue()
-    {
-        if (doctorToJanitorDialogue != null
-            && doctorToJanitorDialogue.dialogue != null
-            && doctorToJanitorDialogue.dialogue.Count > 0)
-        {
-            return doctorToJanitorDialogue;
-        }
-
-        // Try Resources first (TutorialScene-safe, no other scenes touched).
-        var fromResources = Resources.Load<DialogueScriptable>("Tutorial/Tut_DoctorToJanitor");
-        if (fromResources != null
-            && fromResources.dialogue != null
-            && fromResources.dialogue.Count > 0)
-        {
-            doctorToJanitorDialogue = fromResources;
-            return doctorToJanitorDialogue;
-        }
-
-        // TutorialScene-only fallback if the inspector reference failed to load.
-        var created = ScriptableObject.CreateInstance<DialogueScriptable>();
-        created.name = "Tut_DoctorToJanitor_Runtime";
-        created.dialogue = new System.Collections.Generic.List<DialogueScriptable.DialogueEntry>
-        {
-            new DialogueScriptable.DialogueEntry
-            {
-                type = DialogueScriptable.DialogueType.Gate,
-                dialogueText =
-                    "Patient Comfort and staff Morale went up! Nice work. But with so many patients, " +
-                    "cleanliness becomes crucial to manage as well. Lets switch to the Janitor. Press \"P\" to switch."
-            }
-        };
-        doctorToJanitorDialogue = created;
-        Debug.Log("TutorialManager: created runtime doctorToJanitorDialogue fallback.");
-        return doctorToJanitorDialogue;
     }
 
     void OnDestroy()
@@ -156,6 +151,11 @@ public class TutorialManager : MonoBehaviour
         MedicineBoxInteractable.OnBoxUnpacked -= OnMedicineBoxUnpacked;
         MedicineOrganizerMinigame.OnOrganizerStarted -= OnOrganizerStarted;
         MedicineOrganizerMinigame.OnOrganizerCompleted -= OnOrganizerCompleted;
+        JanitorCartController.OnCartAttached -= OnJanitorCartAttached;
+        JanitorCartController.OnCartDetached -= OnJanitorCartDetached;
+        JanitorAbilities.OnTrashPickedUp -= OnJanitorTrashPickedUp;
+        JanitorAbilities.OnTrashDisposed -= OnJanitorTrashDisposed;
+        DirtPile.OnDirtCleaned -= OnJanitorDirtCleaned;
 
         if (Instance == this)
             Instance = null;
@@ -166,6 +166,8 @@ public class TutorialManager : MonoBehaviour
         // Keep dialogue input locked every frame while a line is up.
         if (dialogueBusy)
             LockPlayer(true);
+
+        TickJanitorTutorial();
 
         // Fallback: if all doctor patients are done, show janitor handoff even if an event was missed.
         bool playingAsDoctor = CharacterSwitchManager.Instance != null
@@ -206,6 +208,8 @@ public class TutorialManager : MonoBehaviour
             UnlockRoleSwitch(RoleType.Doctor, OnDoctorButtonPressed);
         else if (target == PSwitchTarget.Janitor)
             UnlockRoleSwitch(RoleType.Janitor, OnJanitorButtonPressed);
+        else if (target == PSwitchTarget.Manager)
+            UnlockRoleSwitch(RoleType.Manager, OnManagerButtonPressed);
 
         yield return null;
 
@@ -402,6 +406,13 @@ public class TutorialManager : MonoBehaviour
             dialogueManager.Btnnext.gameObject.SetActive(true);
     }
 
+    void OnManagerButtonPressed()
+    {
+        if (switchingRole)
+            return;
+        StartCoroutine(FadeSwitchToRole(RoleType.Manager, managerRoomName, null));
+    }
+
     void OnNurseButtonPressed()
     {
         if (switchingRole)
@@ -420,7 +431,7 @@ public class TutorialManager : MonoBehaviour
     {
         if (switchingRole)
             return;
-        StartCoroutine(FadeSwitchToRole(RoleType.Janitor, janitorRoomName, null));
+        StartCoroutine(FadeSwitchToRole(RoleType.Janitor, janitorRoomName, AfterArrivedAsJanitor));
     }
 
     IEnumerator FadeSwitchToRole(RoleType role, string roomName, Action afterFadeIn)
@@ -519,6 +530,278 @@ public class TutorialManager : MonoBehaviour
             ShowDialogue(doctorWelcomeDialogue, null);
         else
             Debug.LogWarning("TutorialManager: doctorWelcomeDialogue is not assigned.");
+    }
+
+    void AfterArrivedAsJanitor()
+    {
+        if (janitorIntroShown)
+            return;
+
+        janitorIntroShown = true;
+        PrepareJanitorCleanupTargets();
+
+        if (dialogueManager != null)
+        {
+            dialogueManager.EnsureDialogueUI();
+            dialogueManager.ApplyLowerThirdLayout();
+            if (dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(true);
+            if (dialogueManager.dialoguePanel != null)
+                dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+        }
+
+        var welcome = janitorWelcomeDialogue;
+        if (welcome != null)
+        {
+            ShowDialogue(welcome, () =>
+            {
+                waitingForCartInteract = true;
+                if (JanitorCartController.Instance != null && JanitorCartController.Instance.isCarried)
+                    OnJanitorCartAttached();
+            });
+        }
+        else
+        {
+            waitingForCartInteract = true;
+            Debug.LogWarning("TutorialManager: janitorWelcomeDialogue is not assigned.");
+        }
+    }
+
+    void TickJanitorTutorial()
+    {
+        if (!janitorIntroShown || dialogueBusy)
+            return;
+
+        if (waitingNearRedTrash && !janitorNearRedShown && IsNearRedTrash())
+        {
+            janitorNearRedShown = true;
+            waitingNearRedTrash = false;
+            var nearDlg = janitorNearRedTrashDialogue;
+            if (nearDlg != null)
+            {
+                ShowDialogue(nearDlg, () =>
+                {
+                    waitingRedTrashPickup = true;
+                    janitorDroppedCart = JanitorCartController.Instance == null
+                        || !JanitorCartController.Instance.isCarried;
+                });
+            }
+            else
+            {
+                waitingRedTrashPickup = true;
+            }
+        }
+
+        if (waitingRedTrashPickup && !janitorAfterPickupShown
+            && janitorDroppedCart && janitorPickedRedTrash)
+        {
+            janitorAfterPickupShown = true;
+            waitingRedTrashPickup = false;
+            var pickupDlg = janitorAfterPickupDialogue;
+            if (pickupDlg != null)
+            {
+                ShowDialogue(pickupDlg, () =>
+                {
+                    waitingTrashDispose = true;
+                });
+            }
+            else
+            {
+                waitingTrashDispose = true;
+            }
+        }
+
+        if (waitingJanitorCleanup && !janitorCleanupDone && janitorCleanupRemaining.Count == 0)
+        {
+            janitorCleanupDone = true;
+            waitingJanitorCleanup = false;
+            StartCoroutine(ShowJanitorToManagerWhenReady());
+        }
+    }
+
+    void OnJanitorCartAttached()
+    {
+        if (!waitingForCartInteract || janitorAfterCartShown || dialogueBusy)
+            return;
+
+        waitingForCartInteract = false;
+        janitorAfterCartShown = true;
+        var afterCart = janitorAfterCartDialogue;
+        if (afterCart != null)
+        {
+            ShowDialogue(afterCart, () =>
+            {
+                waitingNearRedTrash = true;
+            });
+        }
+        else
+        {
+            waitingNearRedTrash = true;
+        }
+    }
+
+    void OnJanitorCartDetached()
+    {
+        if (!waitingRedTrashPickup)
+            return;
+
+        janitorDroppedCart = true;
+    }
+
+    void OnJanitorTrashPickedUp(TrashItem trash)
+    {
+        if (trash == null)
+            return;
+
+        if (waitingRedTrashPickup
+            && trash.gameObject != null
+            && trash.gameObject.name.Equals("RedTrash", System.StringComparison.OrdinalIgnoreCase))
+        {
+            janitorPickedRedTrash = true;
+            if (JanitorCartController.Instance != null && JanitorCartController.Instance.isCarried)
+                JanitorCartController.Instance.Detach();
+            janitorDroppedCart = true;
+        }
+    }
+
+    void OnJanitorTrashDisposed(string trashName)
+    {
+        MarkJanitorCleanupDone(trashName);
+
+        if (waitingTrashDispose && !janitorAfterDisposeShown)
+        {
+            waitingTrashDispose = false;
+            janitorAfterDisposeShown = true;
+            var afterDispose = janitorAfterDisposeDialogue;
+            if (afterDispose != null)
+            {
+                ShowDialogue(afterDispose, () =>
+                {
+                    waitingJanitorCleanup = true;
+                });
+            }
+            else
+            {
+                waitingJanitorCleanup = true;
+            }
+        }
+    }
+
+    void OnJanitorDirtCleaned(string dirtName)
+    {
+        MarkJanitorCleanupDone(dirtName);
+    }
+
+    void MarkJanitorCleanupDone(string objectName)
+    {
+        if (string.IsNullOrEmpty(objectName))
+            return;
+
+        // Match exact names and also "GreenTrash (1)" style variants.
+        if (janitorCleanupRemaining.Remove(objectName))
+            return;
+
+        foreach (var key in new System.Collections.Generic.List<string>(janitorCleanupRemaining))
+        {
+            if (objectName.Equals(key, System.StringComparison.OrdinalIgnoreCase)
+                || objectName.StartsWith(key, System.StringComparison.OrdinalIgnoreCase))
+            {
+                janitorCleanupRemaining.Remove(key);
+                return;
+            }
+        }
+    }
+
+    bool IsNearRedTrash()
+    {
+        var red = GameObject.Find("RedTrash");
+        if (red == null)
+            return false;
+
+        var janitor = FindCharacter(RoleType.Janitor);
+        if (janitor == null)
+            return false;
+
+        float dist = Vector3.Distance(janitor.transform.position, red.transform.position);
+        return dist <= redTrashNearDistance;
+    }
+
+    void PrepareJanitorCleanupTargets()
+    {
+        janitorCleanupRemaining.Clear();
+        for (int i = 0; i < JanitorCleanupNames.Length; i++)
+        {
+            string n = JanitorCleanupNames[i];
+            var go = GameObject.Find(n);
+            if (go == null)
+                continue;
+
+            janitorCleanupRemaining.Add(n);
+            EnsureJanitorCleanupInteractable(go);
+        }
+
+        Debug.Log($"TutorialManager: janitor cleanup targets ready ({janitorCleanupRemaining.Count}).");
+    }
+
+    static void EnsureJanitorCleanupInteractable(GameObject go)
+    {
+        if (go == null) return;
+
+        // Spills / groups are mop targets.
+        string n = go.name;
+        bool isSpillOrGroup = n.StartsWith("Spill", System.StringComparison.OrdinalIgnoreCase)
+            || n.StartsWith("TrashGroup", System.StringComparison.OrdinalIgnoreCase);
+
+        if (isSpillOrGroup)
+        {
+            if (go.GetComponent<DirtPile>() == null)
+                go.AddComponent<DirtPile>();
+        }
+        else if (go.GetComponent<TrashItem>() == null)
+        {
+            var item = go.AddComponent<TrashItem>();
+            if (n.IndexOf("Red", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Syringe", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Bandage", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                item.type = TrashType.Medical;
+            else if (n.IndexOf("Blue", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                item.type = TrashType.Recycle;
+            else
+                item.type = TrashType.General;
+        }
+
+        if (go.GetComponent<Collider>() == null)
+        {
+            var col = go.AddComponent<BoxCollider>();
+            col.isTrigger = true;
+        }
+
+        if (go.GetComponent<InteractableTrigger>() == null)
+            go.AddComponent<InteractableTrigger>();
+    }
+
+    IEnumerator ShowJanitorToManagerWhenReady()
+    {
+        if (janitorToManagerShown)
+            yield break;
+
+        janitorToManagerShown = true;
+
+        while (dialogueBusy)
+            yield return null;
+
+        yield return null;
+
+        if (janitorToManagerDialogue != null)
+        {
+            ShowDialogue(janitorToManagerDialogue, null);
+            StartCoroutine(WatchForPressPGate(PSwitchTarget.Manager));
+        }
+        else
+        {
+            Debug.LogWarning("TutorialManager: janitorToManagerDialogue is not assigned.");
+            BeginWaitForP(PSwitchTarget.Manager);
+        }
     }
 
     void OnSeverityTagged(PatientRecord record)
@@ -705,18 +988,18 @@ public class TutorialManager : MonoBehaviour
             dialogueManager.ApplyLowerThirdLayout();
         }
 
-        var handoff = EnsureDoctorToJanitorDialogue();
-        if (handoff == null)
+        if (doctorToJanitorDialogue != null)
         {
-            Debug.LogError("TutorialManager: doctorToJanitorDialogue could not be created.");
+            ShowDialogue(doctorToJanitorDialogue, null, showNextButton: false);
             BeginWaitForP(PSwitchTarget.Janitor);
-            yield break;
+            if (dialogueManager != null && dialogueManager.Btnnext != null)
+                dialogueManager.Btnnext.gameObject.SetActive(false);
         }
-
-        ShowDialogue(handoff, null, showNextButton: false);
-        BeginWaitForP(PSwitchTarget.Janitor);
-        if (dialogueManager != null && dialogueManager.Btnnext != null)
-            dialogueManager.Btnnext.gameObject.SetActive(false);
+        else
+        {
+            Debug.LogError("TutorialManager: doctorToJanitorDialogue is not assigned.");
+            BeginWaitForP(PSwitchTarget.Janitor);
+        }
     }
 
     bool AllTutorialPatientsTreated()

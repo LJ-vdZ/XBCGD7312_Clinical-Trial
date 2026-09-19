@@ -341,6 +341,9 @@ public class FeatureBootstrap : MonoBehaviour
         MapTrash("RedTrash (1)", TrashType.Medical);
         MapTrash("BlueTrash (1)", TrashType.Recycle);
         MapTrash("GreenTrash (1)", TrashType.General);
+        MapTrash("Syringe", TrashType.Medical);
+        MapTrash("Bandage", TrashType.Medical);
+        MapTrash("BoxTwo", TrashType.General);
     }
 
     void MapTrash(string name, TrashType type)

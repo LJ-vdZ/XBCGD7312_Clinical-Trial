@@ -1,7 +1,11 @@
+using System;
 using UnityEngine;
 
 public class JanitorAbilities : MonoBehaviour
 {
+    public static Action<TrashItem> OnTrashPickedUp;
+    public static Action<string> OnTrashDisposed;
+
     [Header("Holding")]
     public Transform attachPoint;
 
@@ -40,6 +44,7 @@ public class JanitorAbilities : MonoBehaviour
         if (anim != null)
             anim.NotifyTrashPickedUp();
 
+        OnTrashPickedUp?.Invoke(trash);
         Debug.Log($"Picked up {trash.type}");
     }
 
@@ -79,6 +84,8 @@ public class JanitorAbilities : MonoBehaviour
     {
         if (heldTrash == null) return;
 
+        string disposedName = heldTrash.gameObject != null ? heldTrash.gameObject.name : "";
+
         if (heldTrash.type == requiredType)
         {
             HospitalStatsManager.Instance.ChangeSanitation(+12f);
@@ -97,6 +104,7 @@ public class JanitorAbilities : MonoBehaviour
             AudioManager.Instance.Play("drop");
         }
 
+        OnTrashDisposed?.Invoke(disposedName);
         Debug.Log("Trash disposed");
     }
 

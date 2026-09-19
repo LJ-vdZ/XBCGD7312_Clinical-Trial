@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -5,6 +6,8 @@ using UnityEngine;
 /// </summary>
 public class DirtPile : MonoBehaviour, IInteractable
 {
+    public static Action<string> OnDirtCleaned;
+
     public bool CanInteractWhenLocked => false;
 
     public void Interact(GameObject player, RoleType role)
@@ -26,7 +29,9 @@ public class DirtPile : MonoBehaviour, IInteractable
         if (anim != null)
             anim.NotifySweeping();
 
+        string cleanedName = gameObject.name;
         Destroy(gameObject);
+        OnDirtCleaned?.Invoke(cleanedName);
         Debug.Log("Trash swept! +Sanitation");
     }
 }
