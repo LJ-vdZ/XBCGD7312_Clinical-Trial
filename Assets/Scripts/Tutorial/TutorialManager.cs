@@ -52,7 +52,16 @@ public class TutorialManager : MonoBehaviour
 
     [Header("Fade")]
     public float fadeSeconds = 0.6f;
-    public string mainMenuSceneName = "MainMenu";
+    public string hubLevelSceneName = "HospitalHubLevel";
+    public AudioClip ambulanceMusic;
+    [Tooltip("Scene AudioSource on the Ambulence object — preferred playback for the outro.")]
+    public AudioSource ambulanceSource;
+    public string ambulanceObjectName = "Ambulence";
+    public float incomingPatientsHoldSeconds = 2.5f;
+    [Range(0.5f, 1f)] public float ambulanceVolume = 1f;
+    [Range(1f, 8f)] public float ambulanceGain = 4f;
+    public float ambulanceSoftVolume = 0.45f;
+    public float ambulanceFadeSeconds = 1.5f;
 
     enum PSwitchTarget
     {
@@ -89,6 +98,7 @@ public class TutorialManager : MonoBehaviour
     bool managerRedirectDoneShown;
     bool managerVisitorTipShown;
     bool tutorialComplete;
+    bool tutorialEnding;
     bool waitingForRedirectPanel;
     bool waitingForNonCriticalRedirect;
     bool waitingForVisitorDonation;
@@ -130,6 +140,7 @@ public class TutorialManager : MonoBehaviour
 
         SetupStaticStats();
         DisableUnwantedSystems();
+        AudioManager.EnsureAudioListener();
         SetupDialogueUi();
         SetupFadeOverlay();
         HideTutorialVisitorUntilManagerReturn();
@@ -186,7 +197,7 @@ public class TutorialManager : MonoBehaviour
     void Update()
     {
         // Keep dialogue input locked every frame while a line is up.
-        if (dialogueBusy)
+        if (dialogueBusy || tutorialEnding)
             LockPlayer(true);
         // Keep the mouse free while waiting to click Redirect on a patient.
         else if (waitingForNonCriticalRedirect || IsManagerStationUiOpen())
@@ -580,48 +591,290 @@ public class TutorialManager : MonoBehaviour
 
         waitingForVisitorDonation = false;
         tutorialComplete = true;
-        StartCoroutine(ShowTutorialCompleteThenMainMenu());
+        StartCoroutine(ShowTutorialCompleteThenHubLevel());
     }
 
-    IEnumerator ShowTutorialCompleteThenMainMenu()
+    IEnumerator ShowTutorialCompleteThenHubLevel()
     {
         while (dialogueBusy)
             yield return null;
 
+        // Let the visitor panel finish closing before reclaiming ContinueButton.
         yield return null;
+        yield return null;
+
+        if (dialogueManager == null)
+            SetupDialogueUi();
 
         if (dialogueManager != null)
         {
             dialogueManager.EnsureDialogueUI();
+            dialogueManager.RebindContinueButton();
             dialogueManager.ApplyLowerThirdLayout();
             if (dialogueManager.Btnnext != null)
+            {
                 dialogueManager.Btnnext.gameObject.SetActive(true);
+                dialogueManager.Btnnext.interactable = true;
+            }
             if (dialogueManager.dialoguePanel != null)
                 dialogueManager.dialoguePanel.transform.SetAsLastSibling();
         }
 
-        if (managerTutorialCompleteDialogue != null)
-        {
-            bool closed = false;
-            ShowDialogue(managerTutorialCompleteDialogue, () => { closed = true; });
-            while (!closed)
-                yield return null;
-        }
-        else
+        if (managerTutorialCompleteDialogue == null)
         {
             Debug.LogWarning("TutorialManager: managerTutorialCompleteDialogue is not assigned.");
+            yield return FadeOutToHubLevel();
+            yield break;
         }
+
+        bool endingStarted = false;
+        bool ambulanceStarted = false;
+        dialogueBusy = true;
+        LockPlayer(true);
+
+        dialogueManager.Play(managerTutorialCompleteDialogue, null, showNextButton: true, lineShown: index =>
+        {
+            // Second line is on screen — keep siren going, then hold and fade out.
+            if (index != 1 || endingStarted)
+                return;
+
+            endingStarted = true;
+            tutorialEnding = true;
+
+            if (!ambulanceStarted)
+            {
+                ambulanceStarted = true;
+                PlayAmbulanceMusic();
+            }
+
+            if (dialogueManager != null)
+            {
+                if (dialogueManager.dialoguePanel != null)
+                {
+                    dialogueManager.dialoguePanel.SetActive(true);
+                    dialogueManager.dialoguePanel.transform.SetAsLastSibling();
+                }
+
+                if (dialogueManager.Btnnext != null)
+                    dialogueManager.Btnnext.gameObject.SetActive(false);
+            }
+
+            StartCoroutine(HoldIncomingPatientsThenFadeToHub());
+        });
+
+        // Play() binds Continue → NextDialogue. Replace so Continue on line 0 starts the siren first.
+        if (dialogueManager.Btnnext != null)
+        {
+            dialogueManager.Btnnext.onClick.RemoveAllListeners();
+            dialogueManager.Btnnext.onClick.AddListener(() =>
+            {
+                if (dialogueManager == null)
+                    return;
+
+                if (dialogueManager.CurrentDialogueIndex == 0 && !ambulanceStarted)
+                {
+                    ambulanceStarted = true;
+                    PlayAmbulanceMusic();
+                }
+
+                dialogueManager.NextDialogue();
+            });
+
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.HookButton(dialogueManager.Btnnext);
+        }
+
+        LockPlayer(true);
+    }
+
+    IEnumerator HoldIncomingPatientsThenFadeToHub()
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.5f, incomingPatientsHoldSeconds));
+        yield return FadeOutToHubLevel();
+    }
+
+    IEnumerator FadeOutToHubLevel()
+    {
+        tutorialEnding = true;
 
         if (dialogueManager != null)
             dialogueManager.ForceClose();
 
+        dialogueBusy = false;
+        LockPlayer(true);
+
         if (fadeImage != null)
             fadeImage.transform.SetAsLastSibling();
 
+        // Screen fades while ambulance keeps playing.
         yield return Fade(0f, 1f);
 
+        // Then soften the ambulance audio on the Ambulence source.
+        yield return FadeAmbulanceVolume(ambulanceSoftVolume, ambulanceFadeSeconds);
+
+        yield return new WaitForSecondsRealtime(0.35f);
+
+        // Restore normal hub BGM under the black screen before the scene swap.
+        if (AudioManager.Instance != null && AudioManager.Instance.backgroundMusic != null)
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.backgroundMusic);
+
         FeatureBootstrap.PrepareForSceneRestart();
-        UnityEngine.SceneManagement.SceneManager.LoadScene(mainMenuSceneName);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(hubLevelSceneName);
+    }
+
+    void PlayAmbulanceMusic()
+    {
+        var clip = ambulanceMusic != null ? ambulanceMusic : ResolveAmbulanceClip();
+        var source = ResolveAmbulanceSource();
+
+        if (clip == null && source != null)
+            clip = source.clip;
+
+        if (clip == null)
+        {
+            Debug.LogWarning("TutorialManager: Ambulence clip missing. Assign ambulanceMusic (Ambulence Sound).");
+            return;
+        }
+
+        // Fully mute BGM so the siren is clear.
+        if (AudioManager.Instance != null && AudioManager.Instance.musicSource != null)
+        {
+            AudioManager.Instance.musicSource.Stop();
+            AudioManager.Instance.musicSource.volume = 0f;
+        }
+
+        AudioManager.EnsureAudioListener();
+
+        if (source == null)
+        {
+            var go = new GameObject("TutorialAmbulanceAudio");
+            DontDestroyOnLoad(go);
+            source = go.AddComponent<AudioSource>();
+        }
+
+        source.gameObject.SetActive(true);
+        source.enabled = true;
+        source.Stop();
+        source.clip = clip;
+        source.spatialBlend = 0f;
+        source.bypassListenerEffects = true;
+        source.bypassReverbZones = true;
+        source.bypassEffects = true;
+        source.mute = false;
+        source.priority = 0;
+        source.pitch = 1f;
+        source.loop = true;
+        source.volume = Mathf.Clamp01(ambulanceVolume);
+        source.Play();
+        ambulanceSource = source;
+
+        // Extra oneshot so the siren is heard even if looping Play fails on some clips.
+        source.PlayOneShot(clip, Mathf.Clamp01(ambulanceVolume));
+
+        if (!source.isPlaying)
+            Debug.LogWarning("TutorialManager: Ambulence AudioSource failed to play.");
+    }
+
+    AudioSource ResolveAmbulanceSource()
+    {
+        if (ambulanceSource != null)
+            return ambulanceSource;
+
+        string[] names = { ambulanceObjectName, "Ambulence", "Amburence", "Ambulance" };
+        for (int i = 0; i < names.Length; i++)
+        {
+            if (string.IsNullOrWhiteSpace(names[i]))
+                continue;
+
+            var go = GameObject.Find(names[i]);
+            if (go == null)
+                continue;
+
+            var src = go.GetComponent<AudioSource>();
+            if (src != null)
+                return src;
+        }
+
+        // Include inactive objects under the Audio root.
+        var transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var t in transforms)
+        {
+            if (t == null)
+                continue;
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(names[i]) || t.name != names[i])
+                    continue;
+
+                var src = t.GetComponent<AudioSource>();
+                if (src != null)
+                    return src;
+            }
+        }
+
+        return null;
+    }
+
+    IEnumerator FadeAmbulanceVolume(float toVolume, float duration)
+    {
+        var source = ambulanceSource != null ? ambulanceSource : ResolveAmbulanceSource();
+        if (source == null)
+            yield break;
+
+        float from = source.volume;
+        float to = Mathf.Clamp01(toVolume);
+        if (duration <= 0.01f)
+        {
+            source.volume = to;
+            yield break;
+        }
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            source.volume = Mathf.Lerp(from, to, Mathf.Clamp01(t / duration));
+            yield return null;
+        }
+
+        source.volume = to;
+    }
+
+    static AudioClip ResolveAmbulanceClip()
+    {
+        string[] names =
+        {
+            "Ambulence Sound", "Ambulance Sound", "Abulance Sound",
+            "Ambulance", "AmbulanceMusic", "ambulance", "Siren"
+        };
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            var fromResources = Resources.Load<AudioClip>("Sounds/" + names[i]);
+            if (fromResources != null)
+                return fromResources;
+
+#if UNITY_EDITOR
+            string[] paths =
+            {
+                $"Assets/Audio/{names[i]}.mp3",
+                $"Assets/Audio/{names[i]}.wav",
+                $"Assets/Audio/{names[i]}.ogg",
+                $"Assets/Resources/Sounds/{names[i]}.mp3",
+                $"Assets/Resources/Sounds/{names[i]}.wav",
+                $"Assets/Resources/Sounds/{names[i]}.ogg"
+            };
+            for (int p = 0; p < paths.Length; p++)
+            {
+                var clip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>(paths[p]);
+                if (clip != null)
+                    return clip;
+            }
+#endif
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -1453,6 +1706,14 @@ public class TutorialManager : MonoBehaviour
                 cam.LockCursor(false);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            return;
+        }
+
+        if (tutorialEnding)
+        {
+            if (activeChar != null && activeChar.movement != null)
+                activeChar.movement.SetControlsEnabled(false);
+            KeepUiCursorVisible();
             return;
         }
 

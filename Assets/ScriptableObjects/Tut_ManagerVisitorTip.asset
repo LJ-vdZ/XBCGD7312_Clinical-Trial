@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: One last tip! Some visitors may offer donations to help support
-      the hospital. Make sure to interact with them and hear their story. Walk up
-      to the visitor and interact with him.
+    dialogueText: 'Some visitors may offer donations to help support the hospital.
+      Make sure to interact with them and hear their story.
+
+      Walk up to the
+      visitor and interact with him.'

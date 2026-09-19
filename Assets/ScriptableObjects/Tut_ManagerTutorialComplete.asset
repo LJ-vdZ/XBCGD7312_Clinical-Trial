@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: Nice work! If you ever need a refresher while playing the game,
-      open the dictionary by pressing "O" to see all the roles and their abilities.
-      There are also maps and direction signs to help you navigate the clinic. And
-      that's everything you need to know. You're ready to start the game!
+    dialogueText: And that's everything you need to know. You're ready to start the
+      game!
+  - type: 0
+    dialogueText: 'Oh no! In coming patients!
+
+      Lets get to work!'

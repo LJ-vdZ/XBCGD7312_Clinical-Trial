@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: Nice work! You're ready to start a proper day of running the clinic!
+    dialogueText: Nice work! One last tip before you official start...

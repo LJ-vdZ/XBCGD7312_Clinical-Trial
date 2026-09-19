@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Manager-only visitor dialogue. Uses Inspector Backstory / Visitor Name as authored.
@@ -142,7 +143,23 @@ public class VisitorInteractable : MonoBehaviour, IInteractable
             OnDonationAccepted?.Invoke(this);
         }
 
+        // Release ContinueButton so DialogueManager can drive the tutorial outro.
+        UnbindContinueButton();
         Close();
+    }
+
+    void UnbindContinueButton()
+    {
+        if (dialoguePanel == null)
+            return;
+
+        var btnT = dialoguePanel.transform.Find("ContinueButton");
+        if (btnT == null)
+            return;
+
+        var btn = btnT.GetComponent<Button>();
+        if (btn != null)
+            btn.onClick.RemoveListener(OnContinue);
     }
 
     void Close()

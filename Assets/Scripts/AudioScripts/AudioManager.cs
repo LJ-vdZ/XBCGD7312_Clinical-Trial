@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -68,6 +69,8 @@ public class AudioManager : MonoBehaviour
 
         EnsureLoopSources();
 
+        EnsureAudioListener();
+
         LoadClipsFromAudioFolder();
 
         BuildSoundMap();
@@ -85,6 +88,7 @@ public class AudioManager : MonoBehaviour
 
     void Start()
     {
+        EnsureAudioListener();
         PlayMusic(backgroundMusic);
 
         HookAllButtons();
@@ -102,7 +106,48 @@ public class AudioManager : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        EnsureAudioListener();
         HookAllButtons();
+    }
+
+    /// <summary>
+    /// Tutorial Main Camera shipped with AudioListener disabled — without one, all audio is silent.
+    /// </summary>
+    public static void EnsureAudioListener()
+    {
+        var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        AudioListener active = null;
+        for (int i = 0; i < listeners.Length; i++)
+        {
+            if (listeners[i] == null)
+                continue;
+
+            if (!listeners[i].enabled)
+                listeners[i].enabled = true;
+
+            if (listeners[i].enabled && listeners[i].gameObject.activeInHierarchy)
+                active = listeners[i];
+        }
+
+        if (active != null)
+            return;
+
+        var cam = Camera.main;
+        if (cam == null)
+            cam = FindFirstObjectByType<Camera>();
+
+        if (cam != null)
+        {
+            var existing = cam.GetComponent<AudioListener>();
+            if (existing != null)
+                existing.enabled = true;
+            else
+                cam.gameObject.AddComponent<AudioListener>();
+            return;
+        }
+
+        var go = new GameObject("AudioListener");
+        go.AddComponent<AudioListener>();
     }
 
     void EnsureLoopSources()
@@ -280,6 +325,8 @@ public class AudioManager : MonoBehaviour
 
     public void PlayMusic(AudioClip clip)
     {
+        EnsureAudioListener();
+
         if (clip == null || musicSource == null)
         {
             return;
@@ -289,11 +336,41 @@ public class AudioManager : MonoBehaviour
 
         musicSource.loop = true;
 
+        if (musicSource.volume < 0.2f)
+            musicSource.volume = 0.65f;
+
         musicSource.Play();
+    }
+
+    /// <summary>Lerp musicSource volume over time (unscaled).</summary>
+    public IEnumerator FadeMusicVolume(float toVolume, float duration)
+    {
+        if (musicSource == null)
+            yield break;
+
+        float from = musicSource.volume;
+        float to = Mathf.Clamp01(toVolume);
+        if (duration <= 0.01f)
+        {
+            musicSource.volume = to;
+            yield break;
+        }
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            musicSource.volume = Mathf.Lerp(from, to, Mathf.Clamp01(t / duration));
+            yield return null;
+        }
+
+        musicSource.volume = to;
     }
 
     public void PlaySFX(AudioClip clip, float volumeScale = 1f)
     {
+        EnsureAudioListener();
+
         if (clip == null || sfxSource == null)
         {
             return;

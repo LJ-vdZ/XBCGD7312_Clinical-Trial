@@ -16,10 +16,12 @@ public class DialogueManager : MonoBehaviour
     private int currentDialogueIndex = 0;
     private bool waitingForGate = false;
     private Action onFinished;
+    private Action<int> onLineShown;
     private bool nextButtonBound;
 
     public bool IsWaitingForGate => waitingForGate;
     public bool IsPlaying => dialoguePanel != null && dialoguePanel.activeSelf;
+    public int CurrentDialogueIndex => currentDialogueIndex;
 
     private void Start()
     {
@@ -36,13 +38,28 @@ public class DialogueManager : MonoBehaviour
             dialoguePanel.SetActive(false);
     }
 
-    void BindNextButton()
+    public void RebindContinueButton()
     {
-        if (nextButtonBound || Btnnext == null)
+        EnsureDialogueUI();
+        BindNextButton(force: true);
+    }
+
+    void BindNextButton(bool force = false)
+    {
+        if (Btnnext == null)
             return;
 
+        if (nextButtonBound && !force)
+            return;
+
+        // VisitorInteractable also uses ContinueButton and clears listeners via BindButton.
+        // Always reclaim the button when starting tutorial / DialogueScriptable playback.
+        Btnnext.onClick.RemoveAllListeners();
         Btnnext.onClick.AddListener(NextDialogue);
         nextButtonBound = true;
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.HookButton(Btnnext);
     }
 
     /// <summary>
@@ -66,12 +83,10 @@ public class DialogueManager : MonoBehaviour
             if (dialogueField == null)
                 dialogueField = ClinicalUIFactory.FindLabel(dialoguePanel.transform, "BodyLabel");
 
-            if (Btnnext == null)
-            {
-                var btnT = dialoguePanel.transform.Find("ContinueButton");
-                if (btnT != null)
-                    Btnnext = btnT.GetComponent<Button>();
-            }
+            // Re-resolve the button each time — another system may have rebound it.
+            var btnT = dialoguePanel.transform.Find("ContinueButton");
+            if (btnT != null)
+                Btnnext = btnT.GetComponent<Button>();
 
             if (Btnnext == null)
                 Btnnext = dialoguePanel.GetComponentInChildren<Button>(true);
@@ -187,15 +202,20 @@ public class DialogueManager : MonoBehaviour
     }
 
     /// <summary>Play a DialogueScriptable, then run a callback when it finishes.</summary>
-    public void Play(DialogueScriptable data, Action finished = null, bool showNextButton = true)
+    public void Play(DialogueScriptable data, Action finished = null, bool showNextButton = true, Action<int> lineShown = null)
     {
         dialogue = data;
         onFinished = finished;
+        onLineShown = lineShown;
         EnsureDialogueUI();
+        BindNextButton(force: true);
         ApplyLowerThirdLayout();
 
         if (Btnnext != null)
+        {
             Btnnext.gameObject.SetActive(showNextButton);
+            Btnnext.interactable = true;
+        }
 
         StartDialogue();
 
@@ -271,6 +291,8 @@ public class DialogueManager : MonoBehaviour
         {
             waitingForGate = false;
         }
+
+        onLineShown?.Invoke(currentDialogueIndex);
     }
 
     public void PassGate(bool completed)
@@ -310,6 +332,7 @@ public class DialogueManager : MonoBehaviour
 
         Debug.Log("Dialogue finished.");
 
+        onLineShown = null;
         var finished = onFinished;
         onFinished = null;
         finished?.Invoke();

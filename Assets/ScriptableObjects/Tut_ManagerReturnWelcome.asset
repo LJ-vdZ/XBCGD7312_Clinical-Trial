@@ -14,9 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueScriptable
   dialogue:
   - type: 0
-    dialogueText: Based on the Nurse's labelling of critical and not critical patients,
+    dialogueText: 'Based on the Nurse''s labelling of critical and not critical patients,
       you can now decide which patients can be redirected to another hospital to
-      manage the clinic's capacity. The number will show red when the number of patients
-      exceed the capacity.
+      manage the clinic''s capacity. '
   - type: 0
-    dialogueText: Walk up to the station to redirect patients
+    dialogueText: Walk up to the station to redirect patients.
