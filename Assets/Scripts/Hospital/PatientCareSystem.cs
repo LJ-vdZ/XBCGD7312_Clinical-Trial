@@ -108,7 +108,12 @@ public class PatientCareSystem : MonoBehaviour
         return DiagnosisCases[seedIndex % DiagnosisCases.Length];
     }
 
-    void Awake() => Instance = this;
+    void Awake()
+    {
+        Instance = this;
+        // Static bind flags survive scene loads. Clear them so the new scene rebinds its own buttons.
+        PatientInteractable.ResetUiBindings();
+    }
 
     void OnDestroy()
     {
@@ -956,6 +961,18 @@ public class PatientInteractable : MonoBehaviour, IInteractable
     /// <summary>Tutorial: keep Treat disabled while post-assess dialogue is up.</summary>
     public static bool BlockNurseTreat;
 
+    public static void ResetUiBindings()
+    {
+        nurseUiBound = false;
+        doctorUiBound = false;
+        sharedCarePanel = null;
+        sharedDoctorPanel = null;
+        sharedNurseTagStatusLabel = null;
+        sharedDoctorStatusLabel = null;
+        activeCareUi = null;
+        BlockNurseTreat = false;
+    }
+
     public static void CloseOpenCarePanels()
     {
         if (sharedCarePanel != null)
@@ -1069,6 +1086,8 @@ public class PatientInteractable : MonoBehaviour, IInteractable
         RefreshNurseCarePanel();
         carePanel.SetActive(true);
         carePanel.transform.SetAsLastSibling();
+        if (NotificationSidePanel.Instance != null && NotificationSidePanel.Instance.IsShowing)
+            NotificationSidePanel.Instance.BringToFront();
         LockPlayer(true);
     }
 
@@ -1085,6 +1104,8 @@ public class PatientInteractable : MonoBehaviour, IInteractable
         RefreshDoctorCarePanel();
         doctorPanel.SetActive(true);
         doctorPanel.transform.SetAsLastSibling();
+        if (NotificationSidePanel.Instance != null && NotificationSidePanel.Instance.IsShowing)
+            NotificationSidePanel.Instance.BringToFront();
         LockPlayer(true);
 
         if (MiniGameTimerUI.Instance != null)

@@ -155,6 +155,8 @@ public class TutorialManager : MonoBehaviour
 
         StartCoroutine(SetupRoleButtonsNextFrame());
 
+        MedicineBoxInteractable.SetTutorialLocked(true);
+
         MedicineSupplyManager.OnBoxPurchased += OnMedicinePurchased;
         PatientCareSystem.OnSeverityTagged += OnSeverityTagged;
         PatientCareSystem.OnNurseTreated += OnNurseTreated;
@@ -191,6 +193,8 @@ public class TutorialManager : MonoBehaviour
         ManagerStationHub.OnRedirectPanelOpened -= OnRedirectPanelOpened;
         PatientCareSystem.OnPatientRedirected -= OnPatientRedirected;
         VisitorInteractable.OnDonationAccepted -= OnVisitorDonationAccepted;
+
+        MedicineBoxInteractable.SetTutorialLocked(false);
 
         if (Instance == this)
             Instance = null;
@@ -1463,6 +1467,8 @@ public class TutorialManager : MonoBehaviour
     void CloseNurseAssessmentWithDialogue()
     {
         // Do not unlock Treat here — medicine must be organised first.
+        // Box stays locked until the player continues past the unpack prompt.
+        MedicineBoxInteractable.SetTutorialLocked(false);
         PatientInteractable.CloseOpenCarePanels();
     }
 

@@ -10,10 +10,45 @@ public class MedicineBoxInteractable : MonoBehaviour, IInteractable
 {
     public static Action OnBoxUnpacked;
 
+    /// <summary>Tutorial only: box ignores E until the after-assessment dialogue is continued.</summary>
+    public static bool TutorialLocked;
+
     public bool CanInteractWhenLocked => false;
 
     bool unpacked;
     bool unpacking;
+
+    public static void SetTutorialLocked(bool locked)
+    {
+        TutorialLocked = locked;
+        var boxes = UnityEngine.Object.FindObjectsByType<MedicineBoxInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < boxes.Length; i++)
+        {
+            if (boxes[i] != null)
+                boxes[i].ApplyTutorialLock();
+        }
+    }
+
+    void OnEnable()
+    {
+        ApplyTutorialLock();
+    }
+
+    void Start()
+    {
+        // Spawn adds InteractableTrigger after this component enables.
+        ApplyTutorialLock();
+    }
+
+    void ApplyTutorialLock()
+    {
+        if (!TutorialMode.IsActive)
+            return;
+
+        var trigger = GetComponent<InteractableTrigger>();
+        if (trigger != null)
+            trigger.enabled = !TutorialLocked;
+    }
 
     void Awake()
     {
@@ -34,6 +69,9 @@ public class MedicineBoxInteractable : MonoBehaviour, IInteractable
         }
 
         if (unpacked || unpacking) return;
+
+        if (TutorialMode.IsActive && TutorialLocked)
+            return;
 
         // Second box waits until sorted stock is used up (shelf empties as medicineCount drops).
         if (MedicineSupplyManager.Instance != null && MedicineSupplyManager.Instance.ShelfHasMedicines)

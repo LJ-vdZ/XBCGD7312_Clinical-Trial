@@ -108,6 +108,20 @@ public class AudioManager : MonoBehaviour
     {
         EnsureAudioListener();
         HookAllButtons();
+
+        if (scene.name == "TutorialScene")
+            return;
+
+        // Tutorial ending mutes music and may leave a DontDestroyOnLoad siren behind.
+        var ambulance = GameObject.Find("TutorialAmbulanceAudio");
+        if (ambulance != null)
+            Destroy(ambulance);
+
+        if (musicSource != null && backgroundMusic != null
+            && (!musicSource.isPlaying || musicSource.volume < 0.05f))
+        {
+            PlayMusic(backgroundMusic);
+        }
     }
 
     /// <summary>

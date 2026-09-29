@@ -127,10 +127,14 @@ public class SimplePlayerMovement : MonoBehaviour
     {
         controlsEnabled = enabled;
 
-        if (enabled)
+        if (enabled && !UiPointerState.ShouldKeepCursorFree())
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+        }
+        else if (UiPointerState.ShouldKeepCursorFree())
+        {
+            UiPointerState.ApplyFreeCursor();
         }
         else
         {

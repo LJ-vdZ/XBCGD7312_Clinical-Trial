@@ -203,6 +203,9 @@ public class CameraFollow : MonoBehaviour
 
     public void LockCursor(bool locked)
     {
+        if (locked && UiPointerState.ShouldKeepCursorFree())
+            locked = false;
+
         if (locked)
         {
             Cursor.lockState = CursorLockMode.Locked;

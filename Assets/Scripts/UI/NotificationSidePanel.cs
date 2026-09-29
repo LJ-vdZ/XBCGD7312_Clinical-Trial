@@ -75,6 +75,12 @@ public class NotificationSidePanel : MonoBehaviour
         title = ClinicalUIFactory.FindLabel(root.transform, "TitleLabel");
         body = ClinicalUIFactory.FindLabel(root.transform, "BodyLabel");
 
+        // Panel art should not swallow clicks meant for care UI behind it.
+        // The dismiss button still raycasts.
+        var bg = root.GetComponent<Image>();
+        if (bg != null)
+            bg.raycastTarget = false;
+
         var dismissBtn = ClinicalUIFactory.BindButton(root.transform, "Dismiss (Tab)Button", Dismiss);
         if (dismissBtn == null)
             dismissBtn = ClinicalUIFactory.BindButton(root.transform, "Dismiss (Esc)Button", Dismiss);
@@ -151,6 +157,15 @@ public class NotificationSidePanel : MonoBehaviour
 
         tex.Apply(false, true);
         return Sprite.Create(tex, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    public bool IsShowing => isDisplaying && root != null && root.activeInHierarchy;
+
+    /// <summary>Keep the dismiss button above care panels that were just brought forward.</summary>
+    public void BringToFront()
+    {
+        if (root != null && root.activeInHierarchy)
+            root.transform.SetAsLastSibling();
     }
 
     public void Dismiss()
