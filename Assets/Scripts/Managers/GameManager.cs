@@ -18,6 +18,16 @@ public class GameManager : MonoBehaviour
     public float timeUntilFirstOutage = 70f;
     public float outageMaxTime = 15f;
 
+    [Header("Comfort and Morale Drain")]
+    [Tooltip("Per second while power is on. Slower than the outage rates.")]
+    public float comfortDrainPerSecond = 0.25f;
+    public float moraleDrainPerSecond = 0.35f;
+
+    [Tooltip("Per second while the power is out.")]
+    public float outageComfortDrainPerSecond = 1.3f;
+    public float outageMoraleDrainPerSecond = 1.8f;
+    public float outageSanitationDrainPerSecond = 1.0f;
+
     private float currentOutageTime;
     int lastNotifiedSeconds = -1;
 
@@ -61,6 +71,7 @@ public class GameManager : MonoBehaviour
     void Update()
     {
         HandleRoleTimer();
+        HandleAmbientStatDrain();
         HandlePowerOutage();
     }
 
@@ -111,6 +122,24 @@ public class GameManager : MonoBehaviour
     void HandleRoleChanged(RoleType newRole)
     {
         Debug.Log("Role changed to: " + newRole);
+    }
+
+    // Comfort and morale tick down from the start of the hub.
+    // Outage uses the faster rates instead, so the two do not stack.
+    void HandleAmbientStatDrain()
+    {
+        if (TutorialMode.IsActive || isPowerOut)
+        {
+            return;
+        }
+
+        if (HospitalStatsManager.Instance == null)
+        {
+            return;
+        }
+
+        HospitalStatsManager.Instance.ChangeComfort(-comfortDrainPerSecond * Time.deltaTime);
+        HospitalStatsManager.Instance.ChangeMorale(-moraleDrainPerSecond * Time.deltaTime);
     }
 
     //power outage system
@@ -169,12 +198,12 @@ public class GameManager : MonoBehaviour
 
         currentOutageTime += Time.deltaTime;
 
-        //outage drain works same as when it was part of puzzle. returns to normal stat decrease when power returns.
+        // Faster drain while the power is out. Ambient drain resumes when power returns.
         if (HospitalStatsManager.Instance != null)
         {
-            HospitalStatsManager.Instance.ChangeSanitation(-1.0f * Time.deltaTime);
-            HospitalStatsManager.Instance.ChangeComfort(-1.3f * Time.deltaTime);
-            HospitalStatsManager.Instance.ChangeMorale(-1.8f * Time.deltaTime);
+            HospitalStatsManager.Instance.ChangeSanitation(-outageSanitationDrainPerSecond * Time.deltaTime);
+            HospitalStatsManager.Instance.ChangeComfort(-outageComfortDrainPerSecond * Time.deltaTime);
+            HospitalStatsManager.Instance.ChangeMorale(-outageMoraleDrainPerSecond * Time.deltaTime);
         }
 
         float timeLeft = Mathf.Max(0, outageMaxTime - currentOutageTime);

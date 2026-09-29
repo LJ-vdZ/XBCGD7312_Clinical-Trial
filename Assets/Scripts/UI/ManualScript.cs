@@ -27,6 +27,9 @@ public class ManualScript : MonoBehaviour
 
         nextBtn.onClick.AddListener(NextImage);
         backBtn.onClick.AddListener(PreviousImage);
+
+        if (IsMainMenu())
+            ShowMenuCursor();
     }
 
     void Update()
@@ -75,6 +78,13 @@ public class ManualScript : MonoBehaviour
 
     void SetCursorFree(bool free)
     {
+        // The main menu has no locked camera. Closing the dictionary must not hide the mouse.
+        if (IsMainMenu())
+        {
+            ShowMenuCursor();
+            return;
+        }
+
         var active = CharacterSwitchManager.Instance != null
             ? CharacterSwitchManager.Instance.ActiveCharacter
             : null;
@@ -96,6 +106,17 @@ public class ManualScript : MonoBehaviour
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
+    }
+
+    static bool IsMainMenu()
+    {
+        return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "MainMenu";
+    }
+
+    static void ShowMenuCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     void NextImage()
