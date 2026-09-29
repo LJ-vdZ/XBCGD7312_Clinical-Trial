@@ -1,12 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class ManualScript : MonoBehaviour
+public class DictionaryUI : MonoBehaviour
 {
     public Button dictionaryBtn;
-    //public GameObject playBtn;
-    public GameObject ExitBtn;
-    //public GameObject overlayPanel;
+    
     public Button closeBtn;
 
     public Button nextBtn;
@@ -18,7 +16,7 @@ public class ManualScript : MonoBehaviour
     public Sprite[] dictionaryImages;
     int currentImage = 0;
 
-    //public MainSceneUIManager mainSceneUIManager;
+    
 
     void Start()
     {
@@ -39,38 +37,16 @@ public class ManualScript : MonoBehaviour
 
     void OpenDictionary()
     {
-        //if (playBtn != null)
-        //    playBtn.SetActive(false);
-
-        if (ExitBtn != null)
-            ExitBtn.SetActive(false);
-
         dictionaryBtn.gameObject.SetActive(false);
         dictionaryPage.SetActive(true);
         SetCursorFree(true);
-
-        //if (overlayPanel != null)
-        //    overlayPanel.SetActive(false);
-
-        //mainSceneUIManager.CloseAllUI();
-        //mainSceneUIManager.SetPlayerControl(false);
     }
 
     void CloseDictionary()
     {
-        //if (playBtn != null)
-        //    playBtn.SetActive(true);
-
-        if (ExitBtn != null)
-            ExitBtn.SetActive(true);
-
         dictionaryBtn.gameObject.SetActive(true);
         dictionaryPage.SetActive(false);
         SetCursorFree(false);
-
-        //if (overlayPanel != null)
-        //    overlayPanel.SetActive(true);
-        //mainSceneUIManager.SetPlayerControl(true);
     }
 
     void SetCursorFree(bool free)

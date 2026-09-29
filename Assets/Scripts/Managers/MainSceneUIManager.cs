@@ -200,22 +200,22 @@ public class MainSceneUIManager : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.I))
-        {
-            OpenInfoPanel();
-        }
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            OpenInfoManagerPanel();
-        }
-        if (Input.GetKeyDown(KeyCode.J))
-        {
-            OpenInfoJanitorPanel();
-        }
-        if (Input.GetKeyDown(KeyCode.N))
-        {
-            OpenInfoNursePanel();
-        }
+        //if (Input.GetKeyDown(KeyCode.I))
+        //{
+        //    OpenInfoPanel();
+        //}
+        //if (Input.GetKeyDown(KeyCode.R))
+        //{
+        //    OpenInfoManagerPanel();
+        //}
+        //if (Input.GetKeyDown(KeyCode.J))
+        //{
+        //    OpenInfoJanitorPanel();
+        //}
+        //if (Input.GetKeyDown(KeyCode.N))
+        //{
+        //    OpenInfoNursePanel();
+        //}
     }
 
     public void OnConfirmAllocation()
