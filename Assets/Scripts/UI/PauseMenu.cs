@@ -5,8 +5,9 @@ using UnityEngine.UI;
 /// <summary>
 /// Pause overlay for HospitalHubLevel and TutorialScene.
 /// Esc opens/closes; freezes gameplay via timeScale.
-/// Hub: Resume / Restart / Home / Quit.
-/// Tutorial: Resume / Home / Quit only.
+/// Hub: Resume / Restart / Home / Learn More / Quit.
+/// Tutorial: Resume / Home / Learn More / Quit.
+/// Learn More swaps to an NPO links panel; Back (or Esc) returns to the pause buttons.
 /// Temporarily hides open gameplay UI and restores on resume.
 /// </summary>
 public class PauseMenu : MonoBehaviour
@@ -32,8 +33,13 @@ public class PauseMenu : MonoBehaviour
         "Dictionary"
     };
 
+    const string MsfUrl = "https://www.msf.org/";
+    const string HjiUrl = "https://www.healthjusticeinitiative.org.za/";
+    const string GotgUrl = "https://giftofthegivers.org/";
+
     GameObject root;
     GameObject panel;
+    GameObject learnMorePanel;
     bool isPaused;
     float previousTimeScale = 1f;
     readonly List<GameObject> hiddenForPause = new List<GameObject>();
@@ -77,6 +83,12 @@ public class PauseMenu : MonoBehaviour
 
         if (isPaused)
         {
+            if (learnMorePanel != null && learnMorePanel.activeSelf)
+            {
+                CloseLearnMore();
+                return;
+            }
+
             Resume();
             return;
         }
@@ -118,6 +130,8 @@ public class PauseMenu : MonoBehaviour
 
         if (root != null)
             root.SetActive(true);
+        if (learnMorePanel != null)
+            learnMorePanel.SetActive(false);
         if (panel != null)
         {
             panel.SetActive(true);
@@ -126,6 +140,43 @@ public class PauseMenu : MonoBehaviour
 
         if (AudioManager.Instance != null)
             AudioManager.Instance.Play("open");
+    }
+
+    void OpenLearnMore()
+    {
+        if (!isPaused || learnMorePanel == null)
+            return;
+
+        if (panel != null)
+            panel.SetActive(false);
+
+        // Keep the overlay above any HUD or notification that was added after the pause root.
+        if (root != null)
+            root.transform.SetAsLastSibling();
+
+        learnMorePanel.SetActive(true);
+        learnMorePanel.transform.SetAsLastSibling();
+
+        ApplyCursorState(freeCursor: true, movementEnabled: false);
+    }
+
+    void CloseLearnMore()
+    {
+        if (learnMorePanel != null)
+            learnMorePanel.SetActive(false);
+
+        if (panel != null)
+        {
+            panel.SetActive(true);
+            panel.transform.SetAsLastSibling();
+        }
+
+        ApplyCursorState(freeCursor: true, movementEnabled: false);
+    }
+
+    static void OpenUrl(string url)
+    {
+        Application.OpenURL(url);
     }
 
     public void Resume()
@@ -249,6 +300,8 @@ public class PauseMenu : MonoBehaviour
 
     void HideImmediate()
     {
+        if (learnMorePanel != null)
+            learnMorePanel.SetActive(false);
         if (panel != null)
             panel.SetActive(false);
         if (root != null)
@@ -308,15 +361,15 @@ public class PauseMenu : MonoBehaviour
         dim.raycastTarget = true;
 
         bool tutorial = IsTutorialLayout;
-        Vector2 panelSize = tutorial ? new Vector2(420f, 340f) : new Vector2(420f, 420f);
+        Vector2 panelSize = tutorial ? new Vector2(420f, 410f) : new Vector2(420f, 490f);
         panel = ClinicalUIFactory.CreatePanel(root.transform, "PauseMenuPanel", panelSize);
         var panelRt = panel.GetComponent<RectTransform>();
         panelRt.anchoredPosition = Vector2.zero;
 
-        float titleY = tutorial ? 110f : 150f;
+        float titleY = tutorial ? 145f : 185f;
         ClinicalUIFactory.CreateLabel(panel.transform, "Paused", 36, new Vector2(0f, titleY));
 
-        float y = tutorial ? 40f : 70f;
+        float y = tutorial ? 75f : 105f;
         float step = -70f;
         ClinicalUIFactory.CreateButton(panel.transform, "Resume", Resume, new Vector2(0f, y), new Vector2(300f, 56f));
         y += step;
@@ -329,9 +382,50 @@ public class PauseMenu : MonoBehaviour
 
         ClinicalUIFactory.CreateButton(panel.transform, "Home", GoHome, new Vector2(0f, y), new Vector2(300f, 56f));
         y += step;
+        ClinicalUIFactory.CreateButton(panel.transform, "Learn More", OpenLearnMore, new Vector2(0f, y), new Vector2(300f, 56f));
+        y += step;
         ClinicalUIFactory.CreateButton(panel.transform, "Quit", QuitGame, new Vector2(0f, y), new Vector2(300f, 56f));
+
+        BuildLearnMorePanel();
 
         root.SetActive(false);
         panel.SetActive(false);
+    }
+
+    void BuildLearnMorePanel()
+    {
+        learnMorePanel = ClinicalUIFactory.CreatePanel(root.transform, "LearnMorePanel", new Vector2(520f, 500f));
+        learnMorePanel.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+
+        ClinicalUIFactory.CreateLabel(learnMorePanel.transform, "Learn More", 36, new Vector2(0f, 190f));
+
+        var body = ClinicalUIFactory.CreateLabel(learnMorePanel.transform,
+            "Learn more about the organisations working to improve healthcare and support communities in need:",
+            20, new Vector2(0f, 115f));
+        body.GetComponent<RectTransform>().sizeDelta = ClinicalUIFactory.Scale(new Vector2(460f, 90f));
+        body.enableWordWrapping = true;
+
+        Vector2 buttonSize = new Vector2(380f, 56f);
+        SetButtonFontSize(ClinicalUIFactory.CreateButton(learnMorePanel.transform, "Medecins Sans Frontieres (MSF)",
+            () => OpenUrl(MsfUrl), new Vector2(0f, 35f), buttonSize));
+        SetButtonFontSize(ClinicalUIFactory.CreateButton(learnMorePanel.transform, "Health Justice Initiative",
+            () => OpenUrl(HjiUrl), new Vector2(0f, -35f), buttonSize));
+        SetButtonFontSize(ClinicalUIFactory.CreateButton(learnMorePanel.transform, "Gift of the Givers Foundation",
+            () => OpenUrl(GotgUrl), new Vector2(0f, -105f), buttonSize));
+
+        SetButtonFontSize(ClinicalUIFactory.CreateButton(learnMorePanel.transform, "Back", CloseLearnMore,
+            new Vector2(0f, -185f), new Vector2(300f, 56f)));
+
+        learnMorePanel.SetActive(false);
+    }
+
+    static void SetButtonFontSize(Button button)
+    {
+        if (button == null)
+            return;
+
+        var label = button.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (label != null)
+            label.fontSize = ClinicalUIFactory.ScaleFont(24);
     }
 }
